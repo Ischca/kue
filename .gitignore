@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tgz
+*.tsbuildinfo
+.cache/
+.env*
+.npmrc
