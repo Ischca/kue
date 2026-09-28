@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.3.0-beta.4 — release candidate (not yet published)
+## 0.3.0-beta.4 — 2026-09-28
 
-The first public SDK/CLI beta candidate includes the following local development
+The first public SDK/CLI beta includes the following local development
 releases. These entries do not announce a production Cloud service.
 
 - Capture, crop and annotate an app screenshot on iOS and Android.

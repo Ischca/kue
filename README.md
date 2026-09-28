@@ -20,8 +20,11 @@ only in development by default. Web capture is not supported.
 
 ## Try it
 
-The initial beta and hosted service are being prepared. Registry commands below
-apply only after the npm release is announced; they do not imply hosted availability.
+SDK and CLI version `0.3.0-beta.4` are available on npm:
+[@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
+[kue-qa](https://www.npmjs.com/package/kue-qa). Use the explicit `beta` tag or a pinned
+version. The hosted service is still being prepared; npm availability does not
+mean production Cloud or paid sales are available.
 
 ```sh
 # From the Expo app directory, using the Cloud origin provided to you:
@@ -51,5 +54,5 @@ pnpm check
 ```
 
 CI runs type checks, SDK/CLI tests, builds and package-content previews. It has no
-publication or deployment step. See [CHANGELOG.md](CHANGELOG.md) for the candidate
+publication or deployment step. See [CHANGELOG.md](CHANGELOG.md) for the beta
 release and [LICENSE](LICENSE) for the MIT license.
