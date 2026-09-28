@@ -3,7 +3,7 @@
 Connect an Expo SDK 54–57 app to KUE Cloud. Node 22.13+ is required.
 
 ```sh
-npx kue-qa@beta init --server https://YOUR-KUE-HOST
+npx kue-qa init --server https://YOUR-KUE-HOST
 ```
 
 Run from the Expo package, including in a monorepo. The CLI detects your GitHub
@@ -26,5 +26,8 @@ To update: install the desired `@kue-qa/react-native` version with your package
 manager. `init` is idempotent and can refresh server configuration. There is no
 automatic SDK update or runtime dependency on this CLI.
 
-The hosted domain and npm publication must be configured by the service operator
-before the first public release. The examples above do not imply availability.
+These instructions target the `0.3.0` release, published with the `latest` tag.
+To pin setup, use `npx kue-qa@0.3.0 init ...`; the CLI installs the SDK at its own
+exact version, never a beta tag. Registry commands require that version to be
+published. A Cloud origin must be supplied separately; npm availability does not
+mean paid Cloud is available.

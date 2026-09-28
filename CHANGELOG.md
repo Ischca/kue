@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-09-29
+
+- Publish SDK and CLI without a prerelease suffix, using the `latest`
+  distribution tag. Installation no longer requires `@beta`.
+- Resolve the CLI's exact SDK dependency from its own installed package version
+  so setup cannot retain a stale beta version during subsequent releases.
+- Existing `0.3.0-beta.4` artifacts remain unchanged. Production Cloud is deployed
+  at `https://kue.ischca.dev`; general-user GitHub App installation is still being
+  prepared. Paid subscriptions and production device verification remain separate.
+
 ## 0.3.0-beta.4 — 2026-09-28
 
 The first public SDK/CLI beta includes the following local development

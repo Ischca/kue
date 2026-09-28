@@ -18,19 +18,26 @@ not part of this repository.
 Supports Expo SDK 54–57. The CLI requires Node.js 22.13 or newer. KUE is enabled
 only in development by default. Web capture is not supported.
 
-## Try it
+## Release status
 
-SDK and CLI version `0.3.0-beta.4` are available on npm:
+SDK and CLI version `0.3.0` are available on npm with the `latest` tag:
 [@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
-[kue-qa](https://www.npmjs.com/package/kue-qa). Use the explicit `beta` tag or a pinned
-version. The hosted service is still being prepared; npm availability does not
-mean production Cloud or paid sales are available.
+[kue-qa](https://www.npmjs.com/package/kue-qa).
+The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
+Paid subscriptions are not available yet. General-user GitHub App installation
+is still being prepared; SDK usage with your own callback does not require it.
+
+## Install
+
+Installation does not require a beta tag:
 
 ```sh
-# From the Expo app directory, using the Cloud origin provided to you:
-npx kue-qa@beta init --server https://YOUR-KUE-HOST
+# From the Expo app directory, once your repository has access to the GitHub App:
+npx kue-qa init --server https://kue.ischca.dev
 ```
 
+To pin setup, use `npx kue-qa@0.3.0 init ...`. The CLI installs the SDK at the same
+exact version. Existing beta versions remain available for reproducible testing.
 No Cloud account is needed to use the SDK with your own `onSubmit` callback.
 See the [SDK installation and API guide](packages/react-native/README.md) for
 manual integration and the [CLI guide](packages/cli/README.md) for tarball setup.
@@ -54,5 +61,5 @@ pnpm check
 ```
 
 CI runs type checks, SDK/CLI tests, builds and package-content previews. It has no
-publication or deployment step. See [CHANGELOG.md](CHANGELOG.md) for the beta
-release and [LICENSE](LICENSE) for the MIT license.
+publication or deployment step. See [CHANGELOG.md](CHANGELOG.md) for release
+history and [LICENSE](LICENSE) for the MIT license.

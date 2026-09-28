@@ -5,7 +5,14 @@ import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import { addKue } from "../src/codemod.mjs";
-import { main, normalizeServer, repositoryFromRemote, validateConfig } from "../src/init.mjs";
+import { main, normalizeServer, repositoryFromRemote, validateConfig, sdkVersion } from "../src/init.mjs";
+
+test("pins SDK installation to the installed CLI version", async () => {
+  const cli = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const sdk = JSON.parse(await readFile(new URL("../../react-native/package.json", import.meta.url), "utf8"));
+  assert.equal(sdkVersion, cli.version);
+  assert.equal(sdkVersion, sdk.version);
+});
 
 test("supports default functions and arrows, preserves directives, null and nested returns", () => {
   for (const declaration of [

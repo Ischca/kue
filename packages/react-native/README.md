@@ -2,14 +2,15 @@
 
 Expo / React Native SDK for KUE. It captures the current iOS / Android screen, lets the developer crop the relevant area and add a memo, then sends a structured report to a callback, KUE Cloud, or `console.info`.
 
-Supports Expo SDK 54–57, iOS and Android. MIT licensed. Hosted service and package
-publication are being prepared; do not assume the following registry commands work until announced.
+Supports Expo SDK 54–57, iOS and Android. MIT licensed. These instructions target
+the `0.3.0` release. Registry commands require that version to be published; KUE
+Cloud availability is separate from the SDK release.
 
 ```bash
-npx kue-qa@beta init --server https://YOUR-KUE-HOST
+npx kue-qa init --server https://YOUR-KUE-HOST
 ```
 
-For manual installation, add `@kue-qa/react-native@0.3.0-beta.4`, then its native peers:
+For manual installation, add `@kue-qa/react-native@0.3.0`, then its native peers:
 
 ```bash
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context

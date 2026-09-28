@@ -6,11 +6,12 @@ import { parseArgs } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
 import { addKue, marker } from "./codemod.mjs";
 
-const sdkVersion = "0.3.0-beta.4";
+// SDK and CLI are released together. Resolve from this installed CLI, never the consumer.
+export const sdkVersion = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")).version;
 const help = `KUE setup (Node 22+, Expo SDK 54–57)
 
-  npx kue-qa@beta init --server https://YOUR-KUE-HOST
-  npx kue-qa@beta init --config /path/to/project.json
+  npx kue-qa init --server https://YOUR-KUE-HOST
+  npx kue-qa init --config /path/to/project.json
 
 Options:
   --repository owner/repo   Override GitHub origin detection

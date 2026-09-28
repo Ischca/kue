@@ -1,6 +1,6 @@
 {
   "name": "kue-qa",
-  "version": "0.3.0-beta.4",
+  "version": "0.3.0",
   "description": "Connect an Expo app to KUE screenshot-to-GitHub issue reporting.",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/Ischca/kue.git", "directory": "packages/cli" },
@@ -9,7 +9,7 @@
   "bin": { "kue-qa": "./bin/kue-qa.mjs" },
   "engines": { "node": ">=22.13.0" },
   "files": ["bin", "src", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public", "tag": "beta" },
+  "publishConfig": { "access": "public", "tag": "latest" },
   "scripts": { "test": "node --test test/*.test.mjs" },
   "dependencies": { "typescript": "~6.0.3" }
 }
