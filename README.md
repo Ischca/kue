@@ -20,7 +20,7 @@ only in development by default. Web capture is not supported.
 
 ## Release status
 
-SDK and CLI version `0.3.0` are available on npm with the `latest` tag:
+SDK and CLI version `0.3.1` are available on npm with the `latest` tag:
 [@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
 [kue-qa](https://www.npmjs.com/package/kue-qa).
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
@@ -29,14 +29,16 @@ is still being prepared; SDK usage with your own callback does not require it.
 
 ## Install
 
-Installation does not require a beta tag:
+Starting with `0.3.1`, installation needs neither a beta tag nor a server flag:
 
 ```sh
 # From the Expo app directory, once your repository has access to the GitHub App:
-npx kue-qa init --server https://kue.ischca.dev
+npx kue-qa init
 ```
 
-To pin setup, use `npx kue-qa@0.3.0 init ...`. The CLI installs the SDK at the same
+The default server is `https://kue.ischca.dev`. Use `--server URL` for staging or
+local development. Older `0.3.0` installations still need that flag.
+To pin setup, use `npx kue-qa@0.3.1 init`. The CLI installs the SDK at the same
 exact version. Existing beta versions remain available for reproducible testing.
 No Cloud account is needed to use the SDK with your own `onSubmit` callback.
 See the [SDK installation and API guide](packages/react-native/README.md) for

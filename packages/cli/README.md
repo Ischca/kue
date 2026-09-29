@@ -3,7 +3,7 @@
 Connect an Expo SDK 54–57 app to KUE Cloud. Node 22.13+ is required.
 
 ```sh
-npx kue-qa init --server https://YOUR-KUE-HOST
+npx kue-qa init
 ```
 
 Run from the Expo package, including in a monorepo. The CLI detects your GitHub
@@ -11,6 +11,10 @@ remote, opens browser consent, installs the SDK/native dependencies, and adds KU
 to the default React component. It preserves loading returns and nested callbacks.
 Review the diff. Unsupported component patterns fail without editing your root;
 in that case add `<Kue cloud={...} />` manually. KUE is development-only by default.
+
+The default server is `https://kue.ischca.dev`. To use staging or a local server,
+pass `--server https://YOUR-KUE-HOST` (HTTP is allowed only for loopback addresses).
+`--config project.json` uses the server in that file instead of the default.
 
 `--dry-run` previews detection without writes or network. `--root` and
 `--repository` override detection. `--no-open` prints the consent link.
@@ -26,8 +30,7 @@ To update: install the desired `@kue-qa/react-native` version with your package
 manager. `init` is idempotent and can refresh server configuration. There is no
 automatic SDK update or runtime dependency on this CLI.
 
-These instructions target the `0.3.0` release, published with the `latest` tag.
-To pin setup, use `npx kue-qa@0.3.0 init ...`; the CLI installs the SDK at its own
+These instructions target the `0.3.1` release, using the `latest` tag.
+To pin setup, use `npx kue-qa@0.3.1 init`; the CLI installs the SDK at its own
 exact version, never a beta tag. Registry commands require that version to be
-published. A Cloud origin must be supplied separately; npm availability does not
-mean paid Cloud is available.
+published. npm availability does not mean paid Cloud is available.

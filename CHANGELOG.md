@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-09-29
+
+- Default `kue-qa init` to `https://kue.ischca.dev`, so production setup no longer
+  requires `--server`. Explicit staging/local origins and `--config` still work.
+- Document the default and retain origin validation, browser consent and offline
+  dry-run behavior. SDK runtime behavior is unchanged; its version follows the CLI.
+
 ## 0.3.0 — 2026-09-29
 
 - Publish SDK and CLI without a prerelease suffix, using the `latest`

@@ -5,7 +5,66 @@ import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import { addKue } from "../src/codemod.mjs";
-import { main, normalizeServer, repositoryFromRemote, validateConfig, sdkVersion } from "../src/init.mjs";
+import { main, normalizeServer, repositoryFromRemote, validateConfig, sdkVersion, defaultServer } from "../src/init.mjs";
+
+async function appFixture() {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "kue-cli-server-test-"));
+  await writeFile(path.join(cwd, "package.json"), JSON.stringify({ dependencies: { expo: "~57.0.0" }, packageManager: "pnpm@10.33.0" }));
+  await writeFile(path.join(cwd, "App.tsx"), "export default () => <View />;");
+  return cwd;
+}
+
+test("help offers the short command and documents the server override", async (t) => {
+  const log = t.mock.method(console, "log", () => {});
+  await main(["--help"]);
+  const help = log.mock.calls[0].arguments[0];
+  assert.match(help, /\n  npx kue-qa init\n/u);
+  assert.ok(help.includes(`--server URL             Override KUE Cloud (default: ${defaultServer})`));
+});
+
+for (const [name, args, server] of [
+  ["production by default", [], "https://kue.ischca.dev"],
+  ["an explicit staging server", ["--server", "https://kue-staging.ischca.dev/"], "https://kue-staging.ischca.dev"],
+  ["an explicit loopback server", ["--server", "http://127.0.0.1:8787"], "http://127.0.0.1:8787"],
+]) {
+  test(`authorizes and writes config using ${name}`, async (t) => {
+    const cwd = await appFixture();
+    const request = t.mock.method(globalThis, "fetch", async (url, init) => {
+      assert.equal(init.redirect, "error");
+      if (url === `${server}/v1/bootstrap`) {
+        assert.equal(init.method, "POST");
+        assert.deepEqual(JSON.parse(init.body), { repository: "owner/app" });
+        return Response.json({ id: "connect_test", pollToken: "a".repeat(43), connectUrl: `${server}/connect/connect_test` });
+      }
+      assert.equal(url, `${server}/v1/bootstrap/connect_test`);
+      assert.equal(init.headers.Authorization, `Bearer ${"a".repeat(43)}`);
+      return Response.json({ status: "completed", config: { projectKey: "pk_server_test", apiBaseUrl: server } });
+    });
+    await main(["init", "--repository", "owner/app", "--no-open", "--skip-install", ...args], cwd);
+    assert.equal(request.mock.callCount(), 2);
+    const config = await readFile(path.join(cwd, ".kue", "config.js"), "utf8");
+    assert.ok(config.includes(`"apiBaseUrl": "${server}"`));
+    assert.ok(config.includes("pk_server_test"));
+    assert.ok((await readFile(path.join(cwd, "App.tsx"), "utf8")).includes("<KueCapture"));
+  });
+}
+
+test("rejects invalid explicit servers without falling back to production", async (t) => {
+  const cwd = await appFixture();
+  const request = t.mock.method(globalThis, "fetch", () => { throw new Error("Unexpected network request"); });
+  for (const server of ["", "http://example.com", "https://kue.ischca.dev/path"]) {
+    await assert.rejects(main(["init", "--server", server, "--repository", "owner/app", "--no-open", "--skip-install"], cwd), /--server must be/u);
+  }
+  assert.equal(request.mock.callCount(), 0);
+  assert.ok(!(await readdir(cwd)).includes(".kue"));
+});
+
+test("rejects a cross-origin approval link even with the default server", async (t) => {
+  const cwd = await appFixture();
+  t.mock.method(globalThis, "fetch", async () => Response.json({ id: "connect_test", pollToken: "a".repeat(43), connectUrl: "https://other.test/connect/connect_test" }));
+  await assert.rejects(main(["init", "--repository", "owner/app", "--no-open", "--skip-install"], cwd), /invalid setup credentials/u);
+  assert.ok(!(await readdir(cwd)).includes(".kue"));
+});
 
 test("pins SDK installation to the installed CLI version", async () => {
   const cli = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -42,8 +101,10 @@ test("validates server, config and GitHub origins", () => {
   for (const remote of ["git@github.com:owner/repo.git", "https://github.com/owner/repo.git", "ssh://git@github.com/owner/repo.git"]) assert.equal(repositoryFromRemote(remote), "owner/repo");
   assert.equal(repositoryFromRemote("https://evil.test/owner/repo"), undefined);
   assert.throws(() => validateConfig({ apiBaseUrl: "https://kue.test", projectKey: "sk_secret" }));
+  assert.throws(() => validateConfig({ projectKey: "pk_test_12345" }));
 });
-test("initializes and refreshes a real fixture without yalc; dry-run writes nothing", async () => {
+test("initializes and refreshes from config without network; dry-run writes nothing", async (t) => {
+  const request = t.mock.method(globalThis, "fetch", () => { throw new Error("Unexpected network request"); });
   const cwd = await mkdtemp(path.join(os.tmpdir(), "kue-cli-test-"));
   await writeFile(path.join(cwd, "package.json"), JSON.stringify({ dependencies: { expo: "~57.0.0" }, packageManager: "pnpm@10.33.0" }));
   await mkdir(path.join(cwd, "app"));
@@ -62,6 +123,8 @@ test("initializes and refreshes a real fixture without yalc; dry-run writes noth
   await main(["init", "--config", config, "--skip-install"], cwd);
   assert.equal(await readFile(root, "utf8"), first);
   assert.ok((await readFile(path.join(cwd, ".kue", "config.js"), "utf8")).includes("pk_test_12345"));
+  assert.ok((await readFile(path.join(cwd, ".kue", "config.js"), "utf8")).includes("https://kue.test"));
+  assert.equal(request.mock.callCount(), 0);
 });
 
 test("does not rewrite an app root symlink", async () => {

@@ -8,12 +8,14 @@ import { addKue, marker } from "./codemod.mjs";
 
 // SDK and CLI are released together. Resolve from this installed CLI, never the consumer.
 export const sdkVersion = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")).version;
+export const defaultServer = "https://kue.ischca.dev";
 const help = `KUE setup (Node 22+, Expo SDK 54–57)
 
-  npx kue-qa init --server https://YOUR-KUE-HOST
+  npx kue-qa init
   npx kue-qa init --config /path/to/project.json
 
 Options:
+  --server URL             Override KUE Cloud (default: ${defaultServer})
   --repository owner/repo   Override GitHub origin detection
   --root app/_layout.tsx    Override Expo Router / App.tsx detection
   --dry-run                Inspect the planned edit; no network or writes
@@ -130,11 +132,11 @@ export async function main(argv, cwd = process.cwd()) {
   let config;
   if (values.config) config = validateConfig(JSON.parse(await readFile(path.resolve(cwd, values.config), "utf8")));
   else {
-    if (!values.server) throw new Error("Specify --server https://YOUR-KUE-HOST or --config project.json. The hosted service has no default domain yet.");
+    const server = normalizeServer(values.server ?? defaultServer);
     const remote = spawnSync("git", ["remote", "get-url", "origin"], { cwd, encoding: "utf8" });
     const repository = values.repository ?? repositoryFromRemote(remote.stdout ?? "");
     if (!repository || !/^[\w-]+\/[\w.-]+$/u.test(repository)) throw new Error("No GitHub origin found. Specify --repository owner/repo.");
-    config = await authorize(normalizeServer(values.server), repository, values["no-open"]);
+    config = await authorize(server, repository, values["no-open"]);
   }
   // Avoid silently overwriting user-maintained configuration.
   if (await exists(configFile)) {
