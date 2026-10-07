@@ -2,3 +2,11 @@ packages:
   - packages/*
 onlyBuiltDependencies:
   - esbuild
+
+# Patches for the SDK's Expo development tools. These do not override consumer peers.
+overrides:
+  '@xmldom/xmldom@0.8.14': 0.8.15
+  '@xmldom/xmldom@0.9.11': 0.9.12
+  'js-yaml@4.3.1': 4.3.2
+  'xcode@3.0.1>uuid': 11.1.1
+  'metro@0.84.4': 0.84.5

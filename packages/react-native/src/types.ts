@@ -105,6 +105,8 @@ export interface KueProps {
   onQueued?: (report: { clientReportId: string }) => void | Promise<void>;
   /** Keep the default floating button, or hide it when using other triggers. Defaults to true. */
   floatingButton?: boolean;
+  /** Floating button artwork. Defaults to the classic KUE text button. */
+  buttonDesign?: "classic" | "mascot";
   /** Optional sources, subscribed only while active, foregrounded and idle. */
   triggers?: readonly KueTriggerSource[];
   /** Defaults to __DEV__. */

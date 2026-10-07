@@ -38,13 +38,14 @@ for (const [name, args, server] of [
       }
       assert.equal(url, `${server}/v1/bootstrap/connect_test`);
       assert.equal(init.headers.Authorization, `Bearer ${"a".repeat(43)}`);
-      return Response.json({ status: "completed", config: { projectKey: "pk_server_test", apiBaseUrl: server } });
+      return Response.json({ status: "completed", config: { id: "project_example", workspaceId: "workspace_example", projectKey: "pk_server_test", apiBaseUrl: server } });
     });
     await main(["init", "--repository", "owner/app", "--no-open", "--skip-install", ...args], cwd);
     assert.equal(request.mock.callCount(), 2);
     const config = await readFile(path.join(cwd, ".kue", "config.js"), "utf8");
     assert.ok(config.includes(`"apiBaseUrl": "${server}"`));
     assert.ok(config.includes("pk_server_test"));
+    assert.ok(!config.includes("workspaceId")); // Cloud management metadata is not an SDK input.
     assert.ok((await readFile(path.join(cwd, "App.tsx"), "utf8")).includes("<KueCapture"));
   });
 }

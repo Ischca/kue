@@ -75,7 +75,7 @@ describe("dispatchKueReport", () => {
       dispatchKueReport(report, {
         cloud,
         onReceipt: () => {
-          throw new Error("consumer callback failed");
+          throw new Error("private receipt token and report memo");
         },
         submitCloud: vi.fn(async () => receipt),
         submitLocal: vi.fn(),
@@ -83,7 +83,22 @@ describe("dispatchKueReport", () => {
     ).resolves.toBeUndefined();
 
     expect(errorLog).toHaveBeenCalledOnce();
+    expect(errorLog.mock.calls).toEqual([["[KUE] submit notification callback failed"]]);
     errorLog.mockRestore();
+  });
+
+  it("redacts asynchronous notification failures that contain receipt tokens", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await dispatchKueReport(report, {
+        cloud,
+        submitCloud: vi.fn(async () => ({ clientReportId: report.clientReportId, id: "report_123", status: "received" as const, receiptToken: "private-read-capability" })),
+        onReceipt: async (receipt) => { throw new Error(JSON.stringify(receipt)); },
+        submitLocal: vi.fn(),
+      });
+      await Promise.resolve();
+      expect(errorLog.mock.calls).toEqual([["[KUE] submit notification callback failed"]]);
+    } finally { errorLog.mockRestore(); }
   });
 
   it("preserves the structured console fallback when Cloud is absent", async () => {

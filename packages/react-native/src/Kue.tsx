@@ -31,8 +31,8 @@ function defaultEnabled(): boolean {
   return typeof __DEV__ === "boolean" ? __DEV__ : false;
 }
 
-const defaultSubmit = (report: KueLocalReport) => {
-  console.info("[KUE] Capture", report);
+const defaultSubmit = () => {
+  console.info("[KUE] Capture prepared. Configure onSubmit or cloud to save the report.");
 };
 
 const asError = (value: unknown) =>
@@ -47,6 +47,7 @@ export function Kue({
   context = {},
   capture,
   floatingButton = true,
+  buttonDesign = "classic",
   triggers,
   offlineQueue = false,
   onQueued,
@@ -275,7 +276,7 @@ export function Kue({
   return (
     <>
       <SafeAreaProvider pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-        <KueTrigger visible={floatingButton && phase === "idle" && !outboxVisible}
+        <KueTrigger visible={floatingButton && phase === "idle" && !outboxVisible} design={buttonDesign}
           onPress={() => void openReporter().catch(() => undefined)}
           onLongPress={durable ? () => setOutboxVisible(true) : undefined} />
       </SafeAreaProvider>

@@ -80,6 +80,18 @@ describe("submitKueReport", () => {
     mocks.fetch.mockReset();
   });
 
+  it.each([301, 302, 303, 307, 308])("rejects redirect responses (%s) for uploads and receipt reads", async (status) => {
+    mocks.fetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      expect(init).toMatchObject({ redirect: "error", credentials: "omit" });
+      return new Response(null, { status, headers: { Location: "https://unexpected.test/steal" } });
+    });
+    await expect(submitKueReport(report, cloud)).rejects.toMatchObject({ code: "upload_rejected", retryable: false, status });
+    await expect(getKueReportStatus({ id: "report_123", receiptToken: "a".repeat(43) }, cloud))
+      .rejects.toMatchObject({ code: "unexpected_response", retryable: false, status });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.fetch.mock.calls.every(([url]) => url.startsWith(cloud.apiBaseUrl))).toBe(true);
+  });
+
   it("preserves the receipt token and uses it, not the project key, for status", async () => {
     const receiptToken = "a".repeat(43);
     mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ id: "report_123", status: "queued", receiptToken }), { status: 202 }));
@@ -88,6 +100,7 @@ describe("submitKueReport", () => {
     mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ id: receipt.id, status: "completed", githubIssue: { number: 1, url: "https://github.com/owner/repo/issues/1" } })));
     expect((await getKueReportStatus(receipt, cloud)).status).toBe("completed");
     expect(mocks.fetch.mock.calls[1]?.[1].headers.Authorization).toBe(`Bearer ${receiptToken}`);
+    expect(mocks.fetch.mock.calls[1]?.[1]).toMatchObject({ redirect: "error", credentials: "omit" });
   });
 
   it("supports pending status and rejects missing capabilities or foreign issue URLs", async () => {
@@ -141,6 +154,7 @@ describe("submitKueReport", () => {
     const [url, init] = mocks.fetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://reports.example.test/v1/reports");
     expect(init.method).toBe("POST");
+    expect(init).toMatchObject({ redirect: "error", credentials: "omit" });
     expect(init.headers).toEqual({
       Accept: "application/json",
       Authorization: "Bearer pk_12345678",
@@ -192,11 +206,21 @@ describe("submitKueReport", () => {
 
     await expect(submitKueReport(report, cloud)).rejects.toMatchObject({
       code: "upload_rejected",
-      message: "This KUE project's report quota has been reached.",
+      message: "The KUE monthly report quota has been reached.",
       retryable: false,
       serverCode: "quota_exceeded",
       status: 429,
     });
+  });
+
+  it.each([
+    [403, "project_plan_paused", "This project is paused on KUE Free. Select it in the dashboard or upgrade to Indie."],
+    [409, "storage_quota_exceeded", "KUE image storage is full. Free space in the dashboard or upgrade from Free to Indie."],
+  ])("does not retry plan/storage rejection %s %s automatically", async (status, serverCode, message) => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ error: { code: serverCode } }), {
+      status: Number(status), headers: { "content-type": "application/json" },
+    }));
+    await expect(submitKueReport(report, cloud)).rejects.toMatchObject({ status: Number(status), serverCode, message, retryable: false });
   });
 
   it("falls back safely when a rejection body is malformed", async () => {

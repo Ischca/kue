@@ -1,10 +1,12 @@
 # @kue-qa/react-native
 
-Expo / React Native SDK for KUE. It captures the current iOS / Android screen, lets the developer crop the relevant area and add a memo, then sends a structured report to a callback, KUE Cloud, or `console.info`.
+Expo / React Native SDK for KUE. It captures the current iOS / Android screen, lets the developer crop the relevant area and add a memo, then sends a structured report to a callback or KUE Cloud. Without either, it logs only a setup reminder; memo, metadata, screenshot paths, and receipt tokens are omitted from built-in logs.
 
 Supports Expo SDK 54–57, iOS and Android. MIT licensed. These instructions target
-the `0.3.1` release. Registry commands require that version to be published; KUE
-Cloud availability is separate from the SDK release.
+version `0.3.4`.
+KUE Cloud availability is separate from the SDK release.
+
+Documentation: [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs).
 
 ```bash
 npx kue-qa init
@@ -13,7 +15,10 @@ npx kue-qa init
 The CLI connects to `https://kue.ischca.dev` by default. Pass `--server URL` for
 staging or a local server, or `--config project.json` for existing configuration.
 
-For manual installation, add `@kue-qa/react-native@0.3.1`, then its native peers:
+The CLI can also run at a workspace root and detect its single Expo app. With
+multiple apps, select one using `--app apps/mobile`.
+
+For manual installation, add `@kue-qa/react-native@0.3.4`, then its native peers:
 
 ```bash
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
@@ -40,7 +45,7 @@ import { reportIssue } from "@kue-qa/react-native";
 await reportIssue();
 ```
 
-`enabled` defaults to `__DEV__`. Web capture is not supported in Phase 1.
+`enabled` defaults to `__DEV__`. Web capture is not supported.
 
 Drag the floating KUE button anywhere within the safe area. Release against any edge
 to tuck it away, leaving a small handle. Tap the handle to reveal the button, then
@@ -48,6 +53,11 @@ tap again to capture (or drag the handle back into the screen). Dragging never c
 The position survives opening/closing the reporter during the current mount; it is
 not persisted across app restarts. Rotation keeps the button reachable. Screen readers
 also expose move/hide actions, and reduced-motion settings disable docking animations.
+
+The default `buttonDesign="classic"` uses the KUE text button. Select the character
+with `<Kue buttonDesign="mascot" />`. Both use the same 54pt touch target, gestures
+and accessibility actions. The static image is bundled for offline use; no extra
+native module or asset-copy step is required.
 
 ## Metadata and optional triggers
 
@@ -76,8 +86,8 @@ permissions added by those Expo modules if the host does not otherwise use them.
 
 Set `<Kue cloud={cloud} offlineQueue />` to persist before upload and retry while the app is
 foregrounded. No new native dependency, permission, host storage setup or background task
-is needed. The private app directory is `Documents/kue-outbox-v1`: 10 reports / 50MB total,
-10MB per image, 7-day retention (expired entries are removed on next outbox access).
+is needed. The private app directory is `Documents/kue-outbox-v1`: 10 reports / 50 MiB total,
+10 MiB per image, 7-day retention (expired entries are removed on next outbox access).
 Data is not separately encrypted and follows the host app's backup policy.
 
 Retryable failures use backoff and Retry-After. Permanent failures are kept for manual action.
@@ -94,6 +104,25 @@ The screenshot URI is temporary and remains valid until the `onSubmit` callback'
 promise resolves. Copy or upload it inside `onSubmit` if it needs to be retained.
 
 ## KUE Cloud
+
+Cloud projects belong to a workspace for one GitHub personal account or organization.
+Connection requires that owner's GitHub permissions and repository administrator access;
+install the KUE QA GitHub App on the destination repository. The first connecting user
+becomes the KUE workspace owner. A submission key does not grant management or billing access.
+
+Free includes one active project, 100 reports per UTC calendar month, 100 MB of image
+storage, and 30-day image retention. Indie is US$12/month, tax included, per workspace:
+unlimited projects, 5,000 reports per UTC calendar month, 10 GB, and 365-day image retention.
+Limits are shared across the workspace, not charged per tester or device. New submissions
+stop at the limits; there are no automatic overage charges. See the
+[pricing page](https://kue.ischca.dev/en/pricing) for sales availability and terms.
+
+Image retention starts when Cloud accepts a report. Upgrading does not extend existing
+Free images. Indie images expire within 30 days after the subscription ends, without
+extending their original deadline. Project/workspace deletion does not delete GitHub Issues.
+Deleting a project or uninstalling the SDK does not cancel its workspace's subscription.
+Use the [Documentation](https://kue.ischca.dev/en/docs#management) for billing, deletion,
+and ownership-transfer procedures.
 
 Read Expo public environment variables in application code and pass them to `Kue`. The package
 does not read environment variables from `node_modules`.
@@ -137,8 +166,8 @@ The SDK keeps the prepared JPEG and `Idempotency-Key` stable for retries of an u
 crop. Editing either creates a new logical report. Automatic upload retries are disabled unless
 the optional durable outbox below is enabled.
 
-When both are provided, the Phase 1 `onSubmit` callback intentionally takes priority over `cloud`.
-This makes upgrading additive for existing consumers:
+When both are provided, `onSubmit` takes priority over `cloud`. Without either,
+KUE logs only a setup reminder and does not save the report:
 
 ```text
 onSubmit → cloud → console.info

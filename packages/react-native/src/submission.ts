@@ -30,11 +30,12 @@ export async function dispatchKueReport(
     const receipt = await (options.submitPersistent ?? options.submitCloud)(report, options.cloud);
     try {
       const callbackResult = receipt ? options.onReceipt?.(receipt) : options.onQueued?.({ clientReportId: report.clientReportId });
-      void Promise.resolve(callbackResult).catch((cause: unknown) => {
-        console.error("[KUE] submit notification callback failed", cause);
+      void Promise.resolve(callbackResult).catch(() => {
+        // Consumer errors can contain a receipt capability or the report payload.
+        console.error("[KUE] submit notification callback failed");
       });
-    } catch (cause) {
-      console.error("[KUE] submit notification callback failed", cause);
+    } catch {
+      console.error("[KUE] submit notification callback failed");
     }
     return;
   }

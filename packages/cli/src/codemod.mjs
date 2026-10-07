@@ -2,9 +2,39 @@ import ts from "typescript";
 
 export const marker = "/* kue-qa:managed */";
 
+function validateManagedRoot(source, configImport) {
+  const file = ts.createSourceFile("root.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let sdkImport = false, configBinding = false, mounts = 0, invalidMount = false;
+  for (const statement of file.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings) || statement.importClause.isTypeOnly) continue;
+    for (const binding of bindings.elements) {
+      if (binding.isTypeOnly) continue;
+      if (statement.moduleSpecifier.text === "@kue-qa/react-native" && binding.propertyName?.text === "Kue" && binding.name.text === "KueCapture") sdkImport = true;
+      if (statement.moduleSpecifier.text === configImport && !binding.propertyName && binding.name.text === "kueCloudConfig") configBinding = true;
+    }
+  }
+  function visit(node) {
+    if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && ts.isIdentifier(node.tagName) && node.tagName.text === "KueCapture") {
+      mounts++;
+      const props = node.attributes.properties;
+      const cloud = props.filter(prop => ts.isJsxAttribute(prop) && prop.name.getText(file) === "cloud");
+      if (cloud.length !== 1 || !cloud[0].initializer || !ts.isJsxExpression(cloud[0].initializer) ||
+          !cloud[0].initializer.expression || !ts.isIdentifier(cloud[0].initializer.expression) || cloud[0].initializer.expression.text !== "kueCloudConfig" ||
+          props.some(prop => ts.isJsxSpreadAttribute(prop))) invalidMount = true;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  if (file.parseDiagnostics.length || !sdkImport || !configBinding || !mounts || invalidMount) {
+    throw new Error("Managed KUE integration is inconsistent. Restore the generated imports and cloud binding, or maintain it manually; init will not reset your app root.");
+  }
+}
+
 /** Restrict edits to JSX returns in the default component; never rewrite nested callbacks. */
 export function addKue(source, configImport) {
-  if (source.includes(marker)) return source;
+  if (source.includes(marker)) { validateManagedRoot(source, configImport); return source; }
   if (source.includes("@kue-qa/react-native") || /\b(?:KueCapture|kueCloudConfig)\b/u.test(source)) {
     throw new Error("KUE or a conflicting identifier is already present. Integrate Kue manually; no source was changed.");
   }

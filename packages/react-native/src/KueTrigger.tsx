@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { AccessibilityInfo, Animated, Image, PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { kueMascotSource } from "./kue-mascot.generated";
+import type { KueProps } from "./types";
 import {
   beginTriggerGesture, endTriggerGesture, fitTriggerPosition, initialTriggerPosition,
   moveTriggerGesture, revealTrigger, settleTriggerPosition, TRIGGER_SIZE,
   type TriggerBounds, type TriggerGesture, type TriggerPosition,
 } from "./triggerPosition";
 
-export function KueTrigger({ onPress, onLongPress, visible }: { onPress: () => void; onLongPress?: () => void; visible: boolean }) {
+export function KueTrigger({ onPress, onLongPress, visible, design = "classic" }: { onPress: () => void; onLongPress?: () => void; visible: boolean; design?: KueProps["buttonDesign"] }) {
   const insets = useSafeAreaInsets();
   const [bounds, setBounds] = useState<TriggerBounds | null>(null);
   const [edge, setEdge] = useState<TriggerPosition["edge"]>(null);
@@ -139,10 +141,12 @@ export function KueTrigger({ onPress, onLongPress, visible }: { onPress: () => v
           }
         }}
         hitSlop={edge ? 26 : 6}
-        style={[styles.trigger, { transform: point.getTranslateTransform() }, pressed && styles.pressed]}
+        style={[styles.trigger, design === "mascot" && styles.mascotTrigger, { transform: point.getTranslateTransform() }, pressed && styles.pressed]}
         testID="kue-trigger"
       >
-        <Text pointerEvents="none" style={styles.text}>KUE</Text>
+        {design === "mascot"
+          ? <View pointerEvents="none"><Image source={kueMascotSource} resizeMode="contain" accessible={false} style={styles.mascot} /></View>
+          : <Text pointerEvents="none" style={styles.text}>KUE</Text>}
       </Animated.View> : null}
     </View>
   );
@@ -158,5 +162,7 @@ const styles = StyleSheet.create({
     elevation: 8, shadowColor: "#020617", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 7,
   },
   pressed: { opacity: 0.7 },
+  mascotTrigger: { backgroundColor: "transparent", borderWidth: 0, elevation: 0, shadowOpacity: 0.18, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } },
+  mascot: { width: TRIGGER_SIZE, height: TRIGGER_SIZE },
   text: { color: "#FFFFFF", fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
 });

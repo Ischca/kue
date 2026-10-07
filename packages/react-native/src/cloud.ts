@@ -176,7 +176,9 @@ async function rejectedUploadError(response: Response): Promise<KueCloudError> {
   if (status === 401 || status === 403) message = "KUE projectKey was rejected.";
   if (status === 413) message = "The KUE screenshot is too large to upload.";
   if (status === 429) message = "KUE Cloud is receiving too many reports. Please try again.";
-  if (quotaExceeded) message = "This KUE project's report quota has been reached.";
+  if (quotaExceeded) message = "The KUE monthly report quota has been reached.";
+  if (serverCode === "project_plan_paused") message = "This project is paused on KUE Free. Select it in the dashboard or upgrade to Indie.";
+  if (serverCode === "storage_quota_exceeded") message = "KUE image storage is full. Free space in the dashboard or upgrade from Free to Indie.";
 
   return new KueCloudError(message, {
     code: "upload_rejected",
@@ -234,6 +236,9 @@ export async function submitKueReport(
     try {
       response = await expoFetch(normalized.endpoint, {
         method: "POST",
+        // A 307/308 must never resend screenshots or tokens to another origin.
+        redirect: "error",
+        credentials: "omit",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${normalized.projectKey}`,
@@ -310,6 +315,7 @@ export async function getKueReportStatus(
   const timeout = setTimeout(() => controller.abort(), normalized.timeoutMs);
   try {
     const response = await expoFetch(`${normalized.endpoint}/${encodeURIComponent(receipt.id)}`, {
+      redirect: "error", credentials: "omit",
       headers: { Accept: "application/json", Authorization: `Bearer ${receipt.receiptToken}` }, signal: controller.signal,
     });
     if (!response.ok) throw new KueCloudError("Could not read the report status.", {
