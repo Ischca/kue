@@ -43,7 +43,7 @@ Automatic discovery stays within the invocation directory. It skips hidden direc
 
 Setup approval links expire after 15 minutes. Approve only setups initiated from your own terminal. Running `init` does not create an Issue.
 
-Unreleased Cloud update: changing completed connection URLs to the regular dashboard (`/en/app`) and displaying the dashboard after sign-in from expired links are not deployed yet. If an old connection link currently shows an expiry error, open the [dashboard](https://kue.ischca.dev/en/app) directly. Projects already set up do not need to reconnect. Run `init` again only if CLI setup is incomplete.
+After connection completes, the URL changes to the regular dashboard (`/en/app`). Opening an expired connection link also displays the dashboard after sign-in. Projects already set up do not need to reconnect. Run `init` again only if CLI setup is incomplete.
 
 The destination repository's GitHub owner determines the workspace. The first connecting user becomes its KUE workspace owner. When a workspace already exists, another GitHub organization owner does not automatically receive KUE management access.
 
@@ -471,7 +471,7 @@ Uninstalling the SDK does not delete Cloud projects or GitHub Issues.
 | Workspace deletion unavailable | Confirm the subscription has ended, open Checkout sessions have expired, and billing reconciliation has completed. Scheduling cancellation is not sufficient |
 | Account removal unavailable | Verify that every owned workspace has been transferred or physically deleted |
 | CLI cannot detect a root | Run `--dry-run` in the application package and specify `--root`. Use manual integration for unsupported structures |
-| Setup approval link expired | Run `init` again from your own terminal. Do not share approval links |
+| Setup approval link expired | Use the dashboard if setup is complete. Run `init` again from your own terminal only if setup is incomplete. Do not share approval links |
 | 401 or invalid project key | Use current dashboard configuration. Entries using an old key are not automatically migrated |
 | Submission blocked with 403, 409, or 429 | Check workspace quota, storage, and the active project. Wait before retrying a short-term rate limit |
 | Image unavailable | Check retention and deletion status. Wait after a viewing rate limit. Expired images cannot be restored |
