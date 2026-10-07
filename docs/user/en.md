@@ -43,7 +43,7 @@ Automatic discovery stays within the invocation directory. It skips hidden direc
 
 Setup approval links expire after 15 minutes. Approve only setups initiated from your own terminal. Running `init` does not create an Issue.
 
-After connection completes, the URL changes to the regular dashboard (`/en/app`). Opening an expired connection link also displays the dashboard after sign-in. Projects already set up do not need to reconnect. Run `init` again only if CLI setup is incomplete.
+Unreleased Cloud update: changing completed connection URLs to the regular dashboard (`/en/app`) and displaying the dashboard after sign-in from expired links are not deployed yet. If an old connection link currently shows an expiry error, open the [dashboard](https://kue.ischca.dev/en/app) directly. Projects already set up do not need to reconnect. Run `init` again only if CLI setup is incomplete.
 
 The destination repository's GitHub owner determines the workspace. The first connecting user becomes its KUE workspace owner. When a workspace already exists, another GitHub organization owner does not automatically receive KUE management access.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Cloud connection completion — 2026-10-07
+## Unreleased — Cloud connection completion
 
 - Replace completed CLI approval URLs with the regular dashboard URL, removing
   the short-lived token and preventing approval replay on reload.
