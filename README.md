@@ -60,6 +60,12 @@ Indie renews monthly. Its billing period is separate from the UTC monthly quota 
 Manage cancellation through the dashboard before renewal; access continues until
 the paid period ends. Deleting a project or uninstalling the SDK does not cancel billing.
 
+Pending Cloud update (not yet deployed): Free will retain multiple connections but
+restrict repository switching for 24 hours from the first accepted report to a new
+destination. Switching will require explicit dashboard confirmation after expiry;
+connecting an app or checking its key will not switch the destination. See the
+unreleased section in the documentation for the complete policy.
+
 ## Install
 
 Installation needs neither a beta tag nor a server flag:

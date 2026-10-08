@@ -96,3 +96,37 @@ This does not verify Cloud connectivity or whether a project key was revoked.
 
 CLI 0.3.3 and earlier repeated approval and installation on reruns; use 0.3.4 or later
 for idempotent setup.
+
+## Build admission check (unreleased)
+
+The following command is implemented in the development source only. It is not
+included in npm 0.3.4. Do not replace an existing published artifact with this source.
+
+`kue-qa check` reads the Expo app's managed `.kue/config.js` as data. `--app` selects
+an app; `--config project.json` reads dashboard JSON instead. `--env` reads the
+already-resolved `EXPO_PUBLIC_KUE_MODE`, `EXPO_PUBLIC_KUE_API_BASE_URL`,
+`EXPO_PUBLIC_KUE_PROJECT_KEY` and optional `EXPO_PUBLIC_KUE_ENABLED`. These three
+source options are mutually exclusive. Keys must never be command-line arguments.
+
+Environment mode does not load dotenv: resolve Expo/EAS variables before invoking
+it, using exactly the configuration embedded in the bundle. Explicit `local` mode
+or `EXPO_PUBLIC_KUE_ENABLED=false` skips network access. Missing mode/configuration
+is an error, not a successful skip.
+
+The check sends only an authenticated GET to `/v1/project/check`. It checks the
+current key, project admission, workspace quota/storage and delivery configuration.
+Rejection, network/timeout failures, an unsupported server or an invalid response
+exit nonzero. It never approves setup, modifies files, reserves quota or creates
+reports/Issues. `init` remains offline and idempotent on unchanged setups.
+
+Run this in a build hook and again before distributing. No readiness result is
+cached. A pass does not test actual GitHub permissions, R2/queue connectivity,
+image size, physical capture or later revocation/quota use; retain the end-to-end
+test. The request timeout is 10 seconds. HTTPS origins only.
+
+The pending Cloud update retains multiple connections on Free but allows submissions
+from one selected repository. Its first accepted Free report starts a 24-hour
+switching restriction. Connecting, checking and retrying do not switch it. A valid paused key
+reports `project_plan_paused`, not `unauthorized`. Sign in to the dashboard for the
+selected repository, switch date and billing status; do not rotate a key to select
+another project. An invalid key cannot identify an account or expose its projects.

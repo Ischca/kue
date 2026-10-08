@@ -411,6 +411,22 @@ New submissions are rejected when monthly quota or storage capacity is reached. 
 
 Free permits one connected project. If multiple projects remain after returning from Indie to Free, only the selected project can submit; the others are paused. If storage exceeds the Free limit, even the active project cannot submit new reports. Sales availability and conditions are listed on the [pricing page](https://kue.ischca.dev/en/pricing).
 
+### Free destination switching (unreleased)
+
+The following Cloud change has not been deployed. It replaces the published connection limit above and does not yet apply in production. Published SDK and CLI versions remain 0.3.4.
+
+Multiple connections can be saved, but only the selected repository can accept new Free submissions. The first connection is the initial selection. Connecting another repository asks for confirmation showing the current and proposed destinations. Canceling preserves the connection without changing the destination or completing CLI setup. Switching existing destinations does not require key rotation or manual environment-variable updates.
+
+The first accepted Free report for a new destination restricts switching to another repository for 24 hours, measured from server acceptance rather than the device capture time. Connecting, pre-build checks and failed uploads do not start this restriction. An accepted report still counts and retains the restriction if Issue creation later fails. The dashboard shows the deadline.
+
+Expiry does not switch the destination automatically. Use **Use this project on Free** in the dashboard, or confirm the switch when connecting another app. New submissions from the previous project are immediately rejected. The first Free report accepted for the new repository starts another 24-hour period. Continued use of the same repository, retries of existing reports and key rotation do not extend the deadline. Reports accepted before switching can still be delivered.
+
+The switching restriction follows the immutable GitHub repository ID. Renaming, project or workspace deletion/recreation, and switching between Free and Indie do not remove it. Active Indie subscriptions allow multiple projects to submit. Returning to Free restores the saved selection and any unexpired switching restriction; a deleted selection is not automatically replaced with another project. The 100 monthly reports and storage capacity are shared across projects and do not reset on switching. This restriction applies to repositories within a GitHub owner's workspace, not to the number of apps or devices using the same repository and key.
+
+A valid key for an inactive project returns `project_plan_paused`; a switch during the restriction returns `free_project_locked`. These differ from an invalid or revoked key. Repository and billing details are shown only after GitHub sign-in, never disclosed through an invalid submission key. The dashboard distinguishes payment issues confirmed by Stripe synchronization, an ended subscription and an unconfirmed paid period. Returning to Free does not itself cancel a subscription; payment retries may continue.
+
+To prevent deletion/recreation from bypassing the switching restriction, KUE separately retains a secret-keyed hash of the GitHub owner's ID and type, the selected GitHub repository ID and the existing deadline after workspace deletion. This record contains no personal or repository names, submission keys, submitted content or Stripe IDs. It is pseudonymized, not guaranteed anonymous. It is no longer used after expiry and is removed by scheduled cleanup. Deletion never extends the 24-hour deadline.
+
 ### Expiry and deletion
 
 Image retention is determined by the plan at acceptance. Upgrading does not extend images previously accepted under Free. After an Indie subscription ends, Indie images expire within 30 days of the subscription end, without extending the original 365-day deadline. Each report's expiry is displayed in the dashboard.
@@ -458,6 +474,14 @@ Rebuild the development client after changing native dependencies and verify cap
 Uninstalling the SDK does not delete Cloud projects or GitHub Issues.
 
 ## Troubleshooting
+
+### Connection configuration for builds and distribution
+
+Verify the Cloud URL and public create-only key in the build environment that embeds them in the app. Editing local `.env.local` does not update EAS environment variables or an already distributed app. Environment variables already set in the build environment take precedence over local files.
+
+After rotating a key or recreating a project, update each build environment, rebuild the app, and distribute the new build. Do not substitute a key belonging to a different repository. Existing queued entries are not automatically migrated to the new key.
+
+Published CLI 0.3.4 does not validate an existing key against Cloud during `init`. Successful local setup does not confirm that submission is available. Before distribution, check the target project and plan-related pausing in the dashboard, and test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
 
 ### Symptoms and checks
 

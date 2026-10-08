@@ -16,6 +16,7 @@ const help = `KUE setup (Node 22+, Expo SDK 54–57)
 
   npx kue-qa init
   npx kue-qa init --config /path/to/project.json
+  npx kue-qa check          Verify Cloud admission before building/distributing
 
 Options:
   --app DIRECTORY          Select an Expo package inside the current directory

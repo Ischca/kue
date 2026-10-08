@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — Free destination selection
+
+- Save repository connections without silently switching the active Free project.
+  Require explicit confirmation before completing setup for an inactive project.
+- Restrict Free repository switching for 24 hours from its first accepted report.
+  Enforce the restriction atomically with report acceptance and selection, including
+  concurrent uploads, key rotation, deletion/recreation and plan changes.
+- Preserve keys, image retention and shared usage when switching after expiry.
+  Checks, rejected uploads, retries and same-repository submissions do not extend
+  the deadline. Indie can accept reports from multiple repositories.
+- Show the authenticated repository, switch date and verified billing reason.
+  Public submission errors do not reveal account or repository information.
+- Retain deletion-prevention restriction metadata only until its existing deadline,
+  then remove it during scheduled cleanup. Document this separately from monthly usage.
+
+## Unreleased — build admission verification
+
+- Add a read-only `kue-qa check` command with explicit managed, JSON or resolved
+  environment inputs. Fail builds on rejected or unverified Cloud admission.
+- Add an authenticated Cloud admission-check endpoint without reports, Issue
+  creation, image writes or quota consumption. Preserve `init` idempotence.
+- Keep npm SDK/CLI 0.3.4 unchanged; this CLI command is not published yet.
+- Clarify build-time environment updates and key revocation in both languages.
+
 ## Cloud connection completion — 2026-10-08
 
 - Replace completed CLI approval URLs with the regular dashboard URL, removing
