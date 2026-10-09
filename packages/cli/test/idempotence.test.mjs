@@ -6,10 +6,19 @@ import { main, sdkVersion } from "../src/init.mjs";
 import { nativeRequirements, dependencyPlan } from "../src/dependencies.mjs";
 import { installedApp, packageFixture, fakeManager, snapshot, fixtureConfig } from "./fixtures.mjs";
 
-const noNetwork = t => t.mock.method(globalThis, "fetch", () => { throw new Error("Unexpected network/browser authorization"); });
+// Plan reads are expected in auto mode; no browser/bootstrap/other network calls.
+const noNetwork = t => {
+  const unexpected = t.mock.fn(() => { throw new Error("Unexpected network/browser authorization"); });
+  const request = t.mock.method(globalThis, "fetch", url => url.endsWith("/v1/project/features")
+    ? Response.json({ schemaVersion: 1, recording: { entitled: false, available: false } }) : unexpected(url));
+  unexpected.restore = () => request.mock.restore();
+  return unexpected;
+};
 async function initialize(t, options = { sdk: sdkVersion }) {
+  const initialRequest = noNetwork(t);
   const cwd = await installedApp(options), calls = await fakeManager(t, cwd);
-  await main(["init", "--config", "project.json"], cwd);
+  try { await main(["init", "--config", "project.json"], cwd); }
+  finally { initialRequest.restore(); }
   return { cwd, calls };
 }
 
@@ -27,11 +36,11 @@ test("fresh install then repeated default/explicit-config init is a byte-and-mti
   assert.equal(Object.keys(before).filter(name => name.includes("backup-")).length, 1);
 });
 
-test("existing 0.3.3 configuration needs no new metadata, origin or consent", async t => {
+test("existing managed configuration needs no repeated edits, origin or consent", async t => {
   noNetwork(t);
   const { cwd, calls } = await initialize(t);
   const before = await snapshot(cwd);
-  assert.equal(before[".kue/setup.json"], undefined);
+  assert.equal(JSON.parse(before[".kue/setup.json"].text).recording.nativeEnabled, false);
   const log = t.mock.method(console, "log", () => {});
   await main(["init"], cwd);
   assert.deepEqual(await snapshot(cwd), before);
@@ -72,14 +81,14 @@ test("only a missing native dependency is installed; existing ones are untouched
   assert.equal((await calls()).length, 1);
 });
 
-test("explicit JSON replacement changes only config; identical replacement is a no-op", async t => {
+test("explicit JSON replacement updates connection and build binding; identical replacement is a no-op", async t => {
   noNetwork(t);
   const { cwd, calls } = await initialize(t);
   await writeFile(path.join(cwd, "project.json"), JSON.stringify({ ...fixtureConfig, projectKey: "pk_replaced_public" }));
   const before = await snapshot(cwd);
   await main(["init", "--config", "project.json"], cwd);
   const after = await snapshot(cwd);
-  assert.deepEqual(Object.keys(after).filter(file => after[file].mtime !== before[file]?.mtime), [".kue/config.js"]);
+  assert.deepEqual(Object.keys(after).filter(file => after[file].mtime !== before[file]?.mtime), [".kue/config.js", ".kue/setup.json"]);
   await main(["init", "--config", "project.json"], cwd);
   assert.deepEqual(await snapshot(cwd), after);
   assert.equal((await calls()).length, 0);
@@ -114,18 +123,19 @@ test("changing server or an unknown repository requires explicit reconnection be
 
 test("explicit reconnection records the target; repeating init with that repository never reauthorizes", async t => {
   const { cwd, calls } = await initialize(t);
-  const request = t.mock.method(globalThis, "fetch", async url => url.endsWith("/v1/bootstrap")
+  const request = t.mock.method(globalThis, "fetch", async url => url.endsWith("/v1/project/features")
+    ? Response.json({ schemaVersion: 1, recording: { entitled: false, available: false } }) : url.endsWith("/v1/bootstrap")
     ? Response.json({ id: "connect_test", pollToken: "a".repeat(43), connectUrl: "https://kue.test/connect/connect_test" })
     : Response.json({ status: "completed", config: fixtureConfig }));
   const before = await snapshot(cwd);
   await main(["init", "--reconnect", "--repository", "owner/app", "--no-open"], cwd);
-  assert.equal(request.mock.callCount(), 2);
+  assert.equal(request.mock.callCount(), 3);
   const after = await snapshot(cwd);
   assert.deepEqual(after[".kue/config.js"], before[".kue/config.js"]);
   assert.ok(after[".kue/setup.json"]);
   await main(["init", "--repository", "OWNER/APP"], cwd);
   await main(["init"], cwd);
-  assert.equal(request.mock.callCount(), 2);
+  assert.equal(request.mock.callCount(), 5);
   assert.equal((await calls()).length, 0);
   assert.deepEqual(await snapshot(cwd), after);
 });
@@ -165,7 +175,7 @@ for (const scenario of ["newer-sdk", "missing-install", "incompatible-native", "
     if (scenario === "missing-config") await rm(path.join(cwd, ".kue/config.js"));
     if (scenario === "custom-types") await writeFile(path.join(cwd, ".kue/config.d.ts"), "// user-maintained declarations");
     if (scenario === "bad-metadata") await writeFile(path.join(cwd, ".kue/setup.json"), "null");
-    if (scenario === "linked-metadata") await symlink(path.join(cwd, "project.json"), path.join(cwd, ".kue/setup.json"));
+    if (scenario === "linked-metadata") { await rm(path.join(cwd, ".kue/setup.json")); await symlink(path.join(cwd, "project.json"), path.join(cwd, ".kue/setup.json")); }
     const before = await snapshot(cwd);
     await assert.rejects(main(["init"], cwd));
     assert.deepEqual(await snapshot(cwd), before);
@@ -220,6 +230,7 @@ test("user edits made during authorization abort setup before installation or ov
   const { cwd, calls } = await initialize(t);
   let edited;
   t.mock.method(globalThis, "fetch", async url => {
+    if (url.endsWith("/v1/project/features")) return Response.json({ schemaVersion: 1, recording: { entitled: false, available: false } });
     if (url.endsWith("/v1/bootstrap")) return Response.json({ id: "connect_test", pollToken: "a".repeat(43), connectUrl: "https://kue.test/connect/connect_test" });
     const filename = path.join(cwd, ".kue/config.js");
     await writeFile(filename, (await readFile(filename, "utf8")) + "// User edit while browser was open.\n");

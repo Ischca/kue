@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased — Free destination selection
+## 0.3.6 — 2026-10-09
+
+- Add grouped screenshot findings and a long-press actions menu. Keep drafts
+  local until explicit submission and send one Issue with up to 10 findings.
+- Add optional silent screen recording with an in-place red-square stop button,
+  local review and mixed image/video submission. Cloud admission requires an
+  active Indie workspace and is already deployed. The native recorder passed
+  start, stop, preview and interruption checks in a separate iPhone QA app;
+  the full Indie submission flow still needs a registry-build device check.
+- Add CLI build admission checks, recording build selection and
+  `--skip-integration` for manually mounted components.
+- Add an authenticated, read-only Cloud admission check without creating reports,
+  Issues, media writes or quota use. Failed or unverified checks return nonzero.
+- Update fixable development dependencies. Two unpatched Expo build-tool
+  advisories remain under a path- and version-specific CI exception; any new
+  advisory or changed dependency path fails the audit.
+
+## Cloud Free destination selection — 2026-10-09
 
 - Save repository connections without silently switching the active Free project.
   Require explicit confirmation before completing setup for an inactive project.
@@ -14,15 +31,6 @@
   Public submission errors do not reveal account or repository information.
 - Retain deletion-prevention restriction metadata only until its existing deadline,
   then remove it during scheduled cleanup. Document this separately from monthly usage.
-
-## Unreleased — build admission verification
-
-- Add a read-only `kue-qa check` command with explicit managed, JSON or resolved
-  environment inputs. Fail builds on rejected or unverified Cloud admission.
-- Add an authenticated Cloud admission-check endpoint without reports, Issue
-  creation, image writes or quota consumption. Preserve `init` idempotence.
-- Keep npm SDK/CLI 0.3.4 unchanged; this CLI command is not published yet.
-- Clarify build-time environment updates and key revocation in both languages.
 
 ## Cloud connection completion — 2026-10-08
 

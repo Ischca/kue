@@ -82,7 +82,7 @@ test("explicit app selects one and keeps config paths relative to invocation, ro
   await writeFile(path.join(selected, "src/Entry.tsx"), "export default () => <View />;");
   await writeFile(path.join(root, "project.json"), JSON.stringify(config));
   t.mock.method(globalThis, "fetch", () => { throw new Error("Unexpected request"); });
-  await main(["init", "--app", "apps/selected", "--root", "src/Entry.tsx", "--config", "project.json", "--skip-install"], root);
+  await main(["init", "--app", "apps/selected", "--root", "src/Entry.tsx", "--config", "project.json", "--skip-install", "--recording", "off"], root);
   assert.ok((await readFile(path.join(selected, "src/Entry.tsx"), "utf8")).includes('from "../.kue/config.js"'));
   assert.ok((await readFile(path.join(selected, ".kue/config.js"), "utf8")).includes(config.projectKey));
   assert.equal(await readFile(path.join(selected, "App.tsx"), "utf8"), "export default () => <View />;");
@@ -113,7 +113,7 @@ test("installs in the detected app and resolves SDK tarballs from the invocation
   await packageFixture(mobile, "expo", "57.0.0");
   await writeFile(path.join(root, "sdk.tgz"), JSON.stringify({ version: "0.3.3" }));
   const readCalls = await fakeManager(t, root);
-  await main(["init", "--config", "project.json", "--sdk", "sdk.tgz"], root);
+  await main(["init", "--config", "project.json", "--sdk", "sdk.tgz", "--recording", "off"], root);
   const calls = await readCalls();
   assert.equal(calls.length, 2);
   assert.ok(calls.every(call => call.cwd === mobile));

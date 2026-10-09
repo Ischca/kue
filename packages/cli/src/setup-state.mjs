@@ -37,10 +37,13 @@ export function parseSetupState(source, config) {
   let state;
   try { state = JSON.parse(source); } catch { throw new Error("Invalid .kue/setup.json; restore or remove this metadata file before setup."); }
   const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/u.test(value);
-  if (!state || state.version !== 1 || Object.keys(state).some(key => !["version", "connection", "sdkTarball"].includes(key)) ||
+  if (!state || state.version !== 1 || Object.keys(state).some(key => !["version", "connection", "sdkTarball", "recording"].includes(key)) ||
       (state.connection !== undefined && (!state.connection || typeof state.connection.repository !== "string" ||
         !/^[\w-]+\/[\w.-]+$/u.test(state.connection.repository) || !digest(state.connection.configHash))) ||
-      (state.sdkTarball !== undefined && (!state.sdkTarball || !digest(state.sdkTarball.sha256) || typeof state.sdkTarball.version !== "string"))) {
+      (state.sdkTarball !== undefined && (!state.sdkTarball || !digest(state.sdkTarball.sha256) || typeof state.sdkTarball.version !== "string")) ||
+      (state.recording !== undefined && (!state.recording || !["auto", "off"].includes(state.recording.mode) ||
+        typeof state.recording.nativeEnabled !== "boolean" || !digest(state.recording.configHash) ||
+        (state.recording.mode === "off" && state.recording.nativeEnabled)))) {
     throw new Error("Invalid .kue/setup.json; restore or remove this metadata file before setup.");
   }
   // Metadata is only a local hint; never treat it as Cloud authorization. An

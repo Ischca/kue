@@ -1,0 +1,14 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+group = 'dev.kue.recorder'
+version = new groovy.json.JsonSlurper().parse(file('../package.json')).version
+android {
+  namespace 'dev.kue.recorder'
+  defaultConfig {
+    minSdkVersion 24
+    versionCode 1
+    versionName project.version.toString()
+  }
+}

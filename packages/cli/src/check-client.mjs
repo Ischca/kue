@@ -36,7 +36,7 @@ const remedies = {
   rate_limited: "The check was rate limited. Wait before retrying; this build is not verified.",
 };
 
-async function boundedJson(response) {
+export async function boundedJson(response) {
   if (!response.headers.get("content-type")?.toLowerCase().includes("application/json") || !response.body) return null;
   const reader = response.body.getReader();
   const parts = []; let length = 0;

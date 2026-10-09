@@ -93,3 +93,41 @@ export function addKue(source, configImport) {
   for (const edit of edits.sort((a, b) => b.start - a.start)) result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
   return result;
 }
+
+/** Add the build-mode binding once; do not replace hand-written recording props. */
+export function addRecordingMode(source, recordingImport) {
+  const file = ts.createSourceFile("root.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let binding = false, importOffset = 0;
+  for (const statement of file.statements) {
+    if (ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression)) importOffset = statement.end;
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const names = statement.importClause?.namedBindings;
+    if (statement.moduleSpecifier.text === recordingImport && names && ts.isNamedImports(names) && !statement.importClause.isTypeOnly) {
+      binding = names.elements.some(name => !name.isTypeOnly && !name.propertyName && name.name.text === "kueRecordingMode");
+    }
+  }
+  if (!binding && /\bkueRecordingMode\b/u.test(source)) throw new Error("kueRecordingMode already exists. Restore the managed recording binding or integrate KUE manually.");
+  const edits = [];
+  const visit = node => {
+    if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && ts.isIdentifier(node.tagName) && node.tagName.text === "KueCapture") {
+      const props = node.attributes.properties.filter(prop => ts.isJsxAttribute(prop) && prop.name.getText(file) === "recording");
+      if (props.length) {
+        const value = props[0].initializer;
+        if (props.length !== 1 || !binding || !value || !ts.isJsxExpression(value) || !value.expression ||
+            !ts.isIdentifier(value.expression) || value.expression.text !== "kueRecordingMode") {
+          throw new Error("KUE recording was customized in the app root. Use package.json kue.recording or maintain KUE manually; no source was changed.");
+        }
+      } else edits.push({ start: node.attributes.end, end: node.attributes.end, text: " recording={kueRecordingMode}" });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  if (file.parseDiagnostics.length) throw new Error("Cannot update recording in an invalid app root.");
+  if (!binding) {
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    edits.push({ start: importOffset, end: importOffset, text: `${newline}import { kueRecordingMode } from ${JSON.stringify(recordingImport)};${newline}` });
+  }
+  let result = source;
+  for (const edit of edits.sort((a, b) => b.start - a.start)) result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
+  return result;
+}

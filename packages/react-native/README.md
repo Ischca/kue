@@ -3,13 +3,47 @@
 Expo / React Native SDK for KUE. It captures the current iOS / Android screen, lets the developer crop the relevant area and add a memo, then sends a structured report to a callback or KUE Cloud. Without either, it logs only a setup reminder; memo, metadata, screenshot paths, and receipt tokens are omitted from built-in logs.
 
 Supports Expo SDK 54–57, iOS and Android. MIT licensed. These instructions target
-version `0.3.4`.
+version `0.3.6`; confirm that version is available on npm before installation.
 KUE Cloud availability is separate from the SDK release.
+With Xcode 27 and Expo SDK 57, use `expo@57.0.23` or later, enable
+`expo-build-properties` `ios.enableSceneSupport`, and regenerate the iOS project.
+
+### Grouped findings and recording
+
+Version 0.3.6 adds a long-press actions menu and grouped screenshot findings
+(`onSubmitGroup`, `submitKueReportGroup`, `getKueProjectFeatures`). Groups are
+session-local, require explicit submission,
+contain up to 10 findings / 20 MiB, and consume one capture of quota per finding.
+After the first attempt, retries keep the exact payload and idempotency key.
+They do not use the existing offline outbox or fall back to individual Issues.
+Custom `onSubmit` consumers must provide `onSubmitGroup` separately.
+
+Hold the floating button for 0.5 seconds to open a safe-area-aware fan menu while
+the finger is down. Slide to preview an action's name and release over its button
+to select it. Release at the center or outside the targets to cancel. Early movement
+still drags the trigger. Rotation, backgrounding and multitouch cancel selection.
+Screen readers and exceptionally small host surfaces use an accessible list.
+
+Recording stays visible on Free with an Indie lock. The SDK includes
+optional ReplayKit/MediaProjection recording, local playback/memo review, and
+mixed image/video groups. Recordings are silent H.264 MP4, at most 60s / 20MiB;
+the floating KUE button becomes a red square that stops recording when tapped,
+retaining its position and disabling edge hiding and the long-press menu.
+Cloud must enable video admission and verifies Indie again when saving. Nothing
+uploads until explicit group confirmation. Recording requires a native app build;
+Expo Go cannot load the recorder.
+The matching CLI defaults `package.json` `kue.recording` to `auto`: configure
+native recorder inclusion on Indie and exclusion on Free. `init --recording off`
+persists an opt-out. CLI-generated `recording` props follow that mode; a manually
+supplied `recording="off"` only disables runtime use, not native linking. Plan or
+native inclusion changes require rerunning init and rebuilding; normal builds use
+saved settings. Missing native support displays rebuild instructions without
+repeating paid-plan status. Free locks and verification failures remain distinct.
 
 Documentation: [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs).
 
 ```bash
-npx kue-qa init
+npx kue-qa@0.3.6 init
 ```
 
 The CLI connects to `https://kue.ischca.dev` by default. Pass `--server URL` for
@@ -18,7 +52,7 @@ staging or a local server, or `--config project.json` for existing configuration
 The CLI can also run at a workspace root and detect its single Expo app. With
 multiple apps, select one using `--app apps/mobile`.
 
-For manual installation, add `@kue-qa/react-native@0.3.4`, then its native peers:
+Add `@kue-qa/react-native@0.3.6`, then its native peers:
 
 ```bash
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
@@ -54,7 +88,7 @@ The position survives opening/closing the reporter during the current mount; it 
 not persisted across app restarts. Rotation keeps the button reachable. Screen readers
 also expose move/hide actions, and reduced-motion settings disable docking animations.
 
-The default `buttonDesign="classic"` uses the KUE text button. Select the character
+The default `buttonDesign="classic"` shows a viewfinder button. Select the character
 with `<Kue buttonDesign="mascot" />`. Both use the same 54pt touch target, gestures
 and accessibility actions. The static image is bundled for offline use; no extra
 native module or asset-copy step is required.

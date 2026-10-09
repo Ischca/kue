@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["KueRecorderModule"] },
+  "android": { "modules": ["dev.kue.recorder.KueRecorderModule"] }
+}

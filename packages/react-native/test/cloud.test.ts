@@ -11,8 +11,8 @@ vi.mock("expo-file-system", () => ({
     readonly uri: string;
 
     constructor(uri: string) {
-      super(["jpeg bytes"], { type: "image/jpeg" });
-      this.name = "capture.jpg";
+      super(["media bytes"], { type: uri.endsWith(".mp4") ? "video/mp4" : "image/jpeg" });
+      this.name = uri.endsWith(".mp4") ? "capture.mp4" : "capture.jpg";
       this.uri = uri;
     }
   },
@@ -23,6 +23,8 @@ import {
   normalizeKueCloudConfig,
   submitKueReport,
   getKueReportStatus,
+  submitKueReportGroup,
+  getKueProjectFeatures,
 } from "../src/cloud";
 import type { KueCloudConfig, KueLocalReport } from "../src/types";
 
@@ -45,6 +47,34 @@ const report: KueLocalReport = {
   context: { platform: "ios", route: "/profile" },
   capturedAt: "2026-08-20T00:00:00.000Z",
 };
+
+describe("group transport and recording entitlements", () => {
+  beforeEach(() => { mocks.fetch.mockReset(); });
+  it("posts one ordered manifest with all files to the language-neutral group endpoint", async () => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ id: "report_group", status: "queued" }), { status: 202 }));
+    const group = { clientReportId: "group_client_12345678", title: "Review", findings: [report, { ...report, memo: "Second" }] };
+    expect(await submitKueReportGroup(group, cloud)).toMatchObject({ clientReportId: group.clientReportId });
+    const [url, options] = mocks.fetch.mock.calls[0]!;
+    expect(url).toBe("https://reports.example.test/v1/report-groups");
+    expect(options).toMatchObject({ redirect: "error", credentials: "omit", headers: { "Idempotency-Key": group.clientReportId } });
+    const form = options.body as FormData;
+    expect(JSON.parse(form.get("manifest") as string).findings.map((item: { memo: string }) => item.memo)).toEqual([report.memo, "Second"]);
+    expect([...form.keys()]).toEqual(["manifest", "capture_0", "capture_1"]);
+  });
+  it("never falls back to separate reports when an older server rejects groups", async () => {
+    mocks.fetch.mockResolvedValue(new Response("{}", { status: 404 }));
+    await expect(submitKueReportGroup({ clientReportId: "group_client_12345678", title: "Review", findings: [report] }, cloud)).rejects.toMatchObject({ status: 404 });
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+  });
+  it("does not interpret feature lookup failure as a Free plan", async () => {
+    mocks.fetch.mockRejectedValue(new TypeError("offline"));
+    await expect(getKueProjectFeatures(cloud)).rejects.toMatchObject({ code: "network_error" });
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ schemaVersion: 1, groups: true, recording: { entitled: false, available: false } })));
+    expect(await getKueProjectFeatures(cloud)).toEqual({ groups: true, recording: { entitled: false, available: false } });
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ groups: true, plan: "indie" })));
+    await expect(getKueProjectFeatures(cloud)).rejects.toMatchObject({ code: "unexpected_response" });
+  });
+});
 
 describe("KUE Cloud configuration", () => {
   it("normalizes an origin and appends the report path", () => {
@@ -76,6 +106,29 @@ describe("KUE Cloud configuration", () => {
 });
 
 describe("submitKueReport", () => {
+  it("sends video metadata v2 and an MP4 in the same atomic group envelope", async () => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ id: "report_video", status: "received" }), { status: 202 }));
+    await submitKueReportGroup({ clientReportId: "video_group_id_0001", title: "Mixed review", findings: [report, {
+      clientReportId: "video_finding_0001", memo: "Animation", context: { platform: "android" }, capturedAt: report.capturedAt,
+      video: { uri: "file:///capture.mp4", mimeType: "video/mp4", width: 160, height: 240, durationMs: 1000, byteSize: 100,
+        capturedAt: report.capturedAt },
+    }] }, cloud);
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    const [url, init] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/v1/report-groups");
+    const form = init.body as FormData, manifest = JSON.parse(String(form.get("manifest")));
+    expect(manifest.findings[0].metadata.schemaVersion).toBe(1);
+    expect(manifest.findings[1].metadata).toEqual({ schemaVersion: 2, context: { platform: "android" }, capture: {
+      kind: "video", capturedAt: report.capturedAt, mimeType: "video/mp4", durationMs: 1000, outputSize: { width: 160, height: 240 },
+    } });
+    expect((form.get("capture_1") as Blob).type).toBe("video/mp4");
+    expect(String(form.get("manifest"))).not.toContain("file://");
+  });
+  it("distinguishes a paid recording rejection from an invalid project key", async () => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ error: { code: "recording_requires_indie" } }), { status: 403 }));
+    await expect(submitKueReportGroup({ clientReportId: "video_group_id_0001", title: "Review", findings: [report] }, cloud))
+      .rejects.toMatchObject({ serverCode: "recording_requires_indie", retryable: false, message: expect.stringContaining("active Indie") });
+  });
   beforeEach(() => {
     mocks.fetch.mockReset();
   });

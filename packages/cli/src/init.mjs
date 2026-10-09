@@ -4,10 +4,11 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
-import { addKue, marker } from "./codemod.mjs";
+import { addKue, addRecordingMode, marker } from "./codemod.mjs";
 import { resolveAppDirectory } from "./app-directory.mjs";
 import { readOptional, parseManagedConfig, parseSetupState, configFingerprint } from "./setup-state.mjs";
 import { dependencyPlan, tarballIdentity, installedPackage } from "./dependencies.mjs";
+import { recordingMode, resolveRecording, recordingManifest, formatManifest } from "./recording.mjs";
 
 // SDK and CLI are released together. Resolve from this installed CLI, never the consumer.
 export const sdkVersion = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -24,8 +25,10 @@ Options:
   --repository owner/repo   Override GitHub origin detection
   --reconnect             Explicitly reauthorize or change the Cloud connection
   --root app/_layout.tsx    Override Expo Router / App.tsx detection
+  --recording auto|off      Persist recording mode (default: auto, follows Cloud plan)
   --dry-run                Inspect the planned edit; no network or writes
   --skip-install           Leave dependency installation to you
+  --skip-integration       Manage config/dependencies without reading or editing JSX
   --no-open                Print the consent URL without opening a browser
   --sdk /path/to/sdk.tgz    Use a local package tarball before npm publication
 
@@ -33,7 +36,8 @@ Run inside an Expo package or a workspace root with one Expo app.
 Multiple apps require --app. --root is relative to the selected app;
 --config and --sdk are relative to the directory where you run this command.
 KUE is enabled only in development by default.
-An unchanged managed setup is a no-op. Use --reconnect for fresh consent.
+Auto recording checks the connected workspace plan and saves native build settings.
+An unchanged managed setup makes no file changes. Use --reconnect for fresh consent.
 Review the diff before running the app. No GitHub issue is created by init.`;
 
 async function exists(file) { try { await access(file); return true; } catch { return false; } }
@@ -122,9 +126,12 @@ export async function main(argv, cwd = process.cwd()) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true, options: {
     help: { type: "boolean", short: "h" }, server: { type: "string" }, config: { type: "string" }, repository: { type: "string" }, root: { type: "string" }, sdk: { type: "string" }, app: { type: "string" },
     "dry-run": { type: "boolean" }, "skip-install": { type: "boolean" }, "no-open": { type: "boolean" }, reconnect: { type: "boolean" },
+    "skip-integration": { type: "boolean" },
+    recording: { type: "string" },
   } });
   if (values.help || !positionals.length) { console.log(help); return; }
   if (positionals.length !== 1 || positionals[0] !== "init") throw new Error("Unknown command. Run kue-qa --help.");
+  if (values["skip-integration"] && values.root !== undefined) throw new Error("--skip-integration cannot be combined with --root. No app source will be managed.");
   if (values.config && (values.reconnect || values.repository !== undefined || values.server !== undefined)) throw new Error("--config cannot be combined with --reconnect, --repository, or --server.");
   if (values.server !== undefined) normalizeServer(values.server);
   if (values.repository !== undefined && !/^[\w-]+\/[\w.-]+$/u.test(values.repository)) throw new Error("--repository must be owner/repo.");
@@ -132,35 +139,50 @@ export async function main(argv, cwd = process.cwd()) {
   const selected = await resolveAppDirectory(invocationCwd, values.app);
   cwd = selected.directory;
   const manifest = selected.manifest;
+  const mode = recordingMode(manifest, values.recording);
+  // Validate all managed autolinking locations before any authorization/install.
+  recordingManifest(manifest, { nativeEnabled: false }, values.recording);
   console.log(`Expo app: ${JSON.stringify(path.relative(await realpath(invocationCwd), cwd) || ".")}`);
-  const candidates = values.root ? [values.root] : ["app/_layout.tsx", "src/app/_layout.tsx", "App.tsx", "App.jsx", "App.js", "src/App.tsx"];
+  const manual = values["skip-integration"] === true;
+  const candidates = manual ? [] : values.root ? [values.root] : ["app/_layout.tsx", "src/app/_layout.tsx", "App.tsx", "App.jsx", "App.js", "src/App.tsx"];
   const roots = [];
   for (const candidate of candidates) if (await exists(path.resolve(cwd, candidate))) roots.push(candidate);
-  if (roots.length !== 1) throw new Error("Could not choose one app root. Specify --root path/to/root.tsx.");
-  const root = path.resolve(cwd, roots[0]);
-  if (path.relative(cwd, root).startsWith("..") || !/\.[jt]sx?$/u.test(root)) throw new Error("The app root must be a JS/TS file inside the Expo package.");
+  if (!manual && roots.length !== 1) throw new Error("Could not choose one app root. Specify --root path/to/root.tsx.");
+  const root = manual ? null : path.resolve(cwd, roots[0]);
+  if (root && (path.relative(cwd, root).startsWith("..") || !/\.[jt]sx?$/u.test(root))) throw new Error("The app root must be a JS/TS file inside the Expo package.");
   const actualCwd = await realpath(cwd);
-  if ((await lstat(root)).isSymbolicLink() || path.relative(actualCwd, await realpath(root)).startsWith("..")) throw new Error("The app root cannot be a symlink or point outside the Expo package.");
-  const source = await readFile(root, "utf8");
+  if (root && ((await lstat(root)).isSymbolicLink() || path.relative(actualCwd, await realpath(root)).startsWith(".."))) throw new Error("The app root cannot be a symlink or point outside the Expo package.");
+  const source = root ? await readFile(root, "utf8") : null;
   const configFile = path.join(cwd, ".kue", "config.js");
   const stateFile = path.join(cwd, ".kue", "setup.json");
   const typesFile = configFile.slice(0, -3) + ".d.ts";
   const localIgnore = path.join(cwd, ".kue", ".gitignore");
-  for (const target of [path.dirname(configFile), configFile, typesFile, localIgnore, stateFile]) {
+  const recordingFile = path.join(cwd, ".kue", "recording.js");
+  const recordingTypes = recordingFile.slice(0, -3) + ".d.ts";
+  const manifestFile = path.join(cwd, "package.json");
+  for (const target of [path.dirname(configFile), configFile, typesFile, localIgnore, stateFile, recordingFile, recordingTypes, manifestFile]) {
     const stat = await lstat(target).catch((error) => { if (error.code === "ENOENT") return null; throw error; });
     if (stat?.isSymbolicLink()) throw new Error("KUE configuration must not use symlinks; no source was changed.");
   }
-  let configImport = path.relative(path.dirname(root), configFile).split(path.sep).join("/");
+  let configImport = path.relative(root ? path.dirname(root) : cwd, configFile).split(path.sep).join("/");
   if (!configImport.startsWith("./") && !configImport.startsWith("../")) configImport = `./${configImport}`;
-  const next = addKue(source, configImport);
+  const recordingImport = configImport.replace(/config\.js$/u, "recording.js");
+  const captureSource = manual ? source : addKue(source, configImport);
+  const next = manual ? source : addRecordingMode(captureSource, recordingImport);
   const pm = await manager(cwd, manifest);
-  console.log(`App root: ${roots[0]}\nPackage manager: ${pm}\n${next === source ? "KUE integration already present; checking for required changes." : "Will add Kue beside the default component's JSX returns; null/loading returns are preserved."}`);
-  const before = new Map(await Promise.all([configFile, stateFile, typesFile, localIgnore, path.join(cwd, "package.json")].map(async file => [file, await readOptional(file)])));
+  console.log(`${manual ? "App integration: manual; no app source will be read or edited." : `App root: ${roots[0]}`}\nPackage manager: ${pm}\n${manual ? "The existing Kue component must use the generated Cloud config and recording mode." : next === source ? "KUE integration already present; checking for required changes." : "Will add Kue beside the default component's JSX returns; null/loading returns are preserved."}`);
+  const before = new Map(await Promise.all([configFile, stateFile, typesFile, localIgnore, recordingFile, recordingTypes, manifestFile].map(async file => [file, await readOptional(file)])));
   const existing = before.get(configFile) === null ? null : parseManagedConfig(before.get(configFile), validateConfig);
   const state = parseSetupState(before.get(stateFile), existing);
   const typesText = `${marker}\nexport declare const kueCloudConfig: { projectKey: string; apiBaseUrl: string };\n`;
+  const recordingText = value => `${marker}\nexport const kueRecordingMode = ${JSON.stringify(value)};\n`;
+  const recordingTypesText = `${marker}\nexport declare const kueRecordingMode: "auto" | "off";\n`;
+  if (before.get(recordingFile) !== null && !["auto", "off"].some(value => before.get(recordingFile) === recordingText(value))) {
+    throw new Error(".kue/recording.js was customized. Use package.json kue.recording instead; it will not be overwritten.");
+  }
+  if (before.get(recordingTypes) !== null && before.get(recordingTypes) !== recordingTypesText) throw new Error(".kue/recording.d.ts was customized; it will not be overwritten.");
   if (before.get(typesFile) !== null && before.get(typesFile) !== typesText) throw new Error(".kue/config.d.ts was customized. Restore the generated declaration; it will not be overwritten.");
-  if (next === source && !existing && !values.config && !values.reconnect) throw new Error("Managed app root has no .kue/config.js. Restore the file, supply --config, or explicitly --reconnect; init will not reset the connection.");
+  if (!manual && captureSource === source && !existing && !values.config && !values.reconnect) throw new Error("Managed app root has no .kue/config.js. Restore the file, supply --config, or explicitly --reconnect; init will not reset the connection.");
   let config = values.config ? validateConfig(JSON.parse(await readFile(path.resolve(invocationCwd, values.config), "utf8"))) : existing;
   if (existing && !values.reconnect && !values.config) {
     if (values.server !== undefined && normalizeServer(values.server) !== existing.apiBaseUrl) throw new Error("Changing the server requires --reconnect; the existing connection was preserved.");
@@ -179,6 +201,7 @@ export async function main(argv, cwd = process.cwd()) {
   console.log(`Connection: ${needsAuthorization ? "browser approval required" : "reuse local configuration; no browser approval"}.`);
   if (plan.installSdk) console.log(`SDK: install ${sdk}.`);
   if (plan.native.length) console.log(`Missing native dependencies: ${plan.native.join(", ")}.`);
+  console.log(`Recording: ${mode === "off" ? "off; native recording will be excluded" : "auto; verify Cloud plan before saving native build settings"}.`);
   if (values["dry-run"]) { console.log("Dry run: no files, dependencies, or remote state were changed."); return; }
   if (needsAuthorization) {
     const server = normalizeServer(values.server ?? existing?.apiBaseUrl ?? defaultServer);
@@ -188,8 +211,11 @@ export async function main(argv, cwd = process.cwd()) {
     config = await authorize(server, repository, values["no-open"]);
     state.connection = { repository, configHash: configFingerprint(config) };
   } else if (state.connection?.configHash !== configFingerprint(config)) delete state.connection;
+  const previousRecording = state.recording;
+  const recording = await resolveRecording(config, mode);
+  state.recording = recording;
   const assertUnchanged = async (includeManifest) => {
-    if (await readFile(root, "utf8") !== source) throw new Error("The app root changed during setup. Rerun init; your changes were preserved.");
+    if (root && await readFile(root, "utf8") !== source) throw new Error("The app root changed during setup. Rerun init; your changes were preserved.");
     for (const [file, text] of before) {
       if (!includeManifest && file === path.join(cwd, "package.json")) continue;
       if (await readOptional(file) !== text) throw new Error(`${path.relative(cwd, file)} changed during setup. Rerun init; your changes were preserved.`);
@@ -208,13 +234,18 @@ export async function main(argv, cwd = process.cwd()) {
     if (remaining.installSdk || remaining.native.length) throw new Error("Dependencies are still incomplete after installation. Review the package-manager output; your app root has not been changed.");
   }
   await assertUnchanged(false);
+  const installedManifestText = await readFile(manifestFile, "utf8");
+  const installedManifest = JSON.parse(installedManifestText);
+  if (recordingMode(installedManifest, values.recording) !== mode) throw new Error("Recording configuration changed during installation. Rerun init; your app root has not been changed.");
+  const nextManifestText = formatManifest(installedManifestText, recordingManifest(installedManifest, recording, values.recording));
   const configText = existing && configFingerprint(existing) === configFingerprint(config) ? before.get(configFile)
     : `${marker}\n// Public create-only key. Never put GitHub or Stripe secrets here.\nexport const kueCloudConfig = ${JSON.stringify(config, null, 2)};\n`;
-  const writes = [[configFile, configText], [typesFile, typesText]];
+  const writes = [[configFile, configText], [typesFile, typesText], [recordingFile, recordingText(mode)], [recordingTypes, recordingTypesText]];
   if (before.get(localIgnore) === null) writes.push([localIgnore, "backup-*.txt\n"]);
-  if (before.get(stateFile) !== null || state.connection || state.sdkTarball) writes.push([stateFile, JSON.stringify(state, null, 2) + "\n"]);
+  writes.push([stateFile, JSON.stringify(state, null, 2) + "\n"]);
   const changed = writes.filter(([file, text]) => before.get(file) !== text);
-  if (!changed.length && next === source && !installing) {
+  const manifestChanged = nextManifestText !== installedManifestText;
+  if (!changed.length && next === source && !installing && !manifestChanged) {
     console.log(`KUE already configured. No files or dependencies changed.${values["skip-install"] ? " Dependency installation was skipped." : ""}`);
     return;
   }
@@ -225,10 +256,14 @@ export async function main(argv, cwd = process.cwd()) {
     console.log(`Original root saved to ${path.relative(cwd, backup)} (keep local; do not commit backups).`);
   }
   for (const [file, text] of changed) await writeFile(file, text);
+  if (manifestChanged) await writeFile(manifestFile, nextManifestText);
   if (next !== source) {
     const temporary = `${root}.kue-${process.pid}.tmp`;
     await writeFile(temporary, next, { flag: "wx" });
     await rename(temporary, root);
   }
-  console.log(`KUE configured. Review your diff, then run ${pm === "npm" ? "npx" : `${pm} exec`} expo start.\nCommit the app changes and .kue/config.js + .d.ts (public create-only key). Never commit backups.\n${values["skip-install"] ? `Dependencies were NOT installed. Install ${sdk} and its Expo native peers first.\n` : ""}View submitted reports and GitHub Issues in the KUE dashboard.`);
+  if (recording.nativeEnabled !== previousRecording?.nativeEnabled || manifestChanged) {
+    console.log(`Native recording: ${recording.nativeEnabled ? "included" : "excluded"}. This is build configuration, not a change to an installed app. Rebuild after changing native configuration; Expo Go cannot load the recorder.`);
+  }
+  console.log(`KUE configured. Review your diff, then use your existing app build/start workflow.\nCommit package.json, the app changes, and managed .kue config/recording declarations + setup.json. Never commit backups.\n${values["skip-install"] ? `Dependencies were NOT installed. Install ${sdk} and its Expo native peers first.\n` : ""}View submitted reports and GitHub Issues in the KUE dashboard.`);
 }

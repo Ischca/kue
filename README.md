@@ -7,6 +7,19 @@ This repository contains the MIT-licensed SDK and setup CLI only. KUE Cloud is a
 separately operated service; its server code, configuration and credentials are
 not part of this repository.
 
+Version 0.3.6 adds grouped screenshot submissions and a long-press actions menu
+(hold to open an on-screen fan, slide to preview, release to select; release away
+from items to cancel). It also adds optional silent native screen recording and mixed video/image
+submission. Recording requires an active Indie workspace, a recording-capable
+build and Cloud with video admission enabled. Free keeps a visible locked action.
+During recording, tap the red-square KUE button to stop and review locally.
+The CLI resolves default `auto` recording inclusion from the
+workspace plan, supports an explicit `off`, and saves deterministic build settings.
+This selection does not enable recording or grant runtime entitlement by itself.
+For a custom wrapper, the CLI's `--skip-integration` manages these
+settings and dependencies without reading or editing JSX. Build and store
+distribution remain part of the host application's workflow.
+
 ## Documentation
 
 - [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs)
@@ -30,7 +43,7 @@ only in development by default. Web capture is not supported.
 
 ## Release status
 
-SDK and CLI version `0.3.4` are available on npm with the `latest` tag:
+SDK and CLI version `0.3.6` are available on npm with the `latest` tag:
 [@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
 [kue-qa](https://www.npmjs.com/package/kue-qa).
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
@@ -60,11 +73,11 @@ Indie renews monthly. Its billing period is separate from the UTC monthly quota 
 Manage cancellation through the dashboard before renewal; access continues until
 the paid period ends. Deleting a project or uninstalling the SDK does not cancel billing.
 
-Pending Cloud update (not yet deployed): Free will retain multiple connections but
-restrict repository switching for 24 hours from the first accepted report to a new
-destination. Switching will require explicit dashboard confirmation after expiry;
+Production Cloud retains multiple Free connections but restricts repository
+switching for 24 hours from the first accepted report to a new destination.
+Switching requires explicit dashboard confirmation after expiry;
 connecting an app or checking its key will not switch the destination. See the
-unreleased section in the documentation for the complete policy.
+documentation for the complete policy.
 
 ## Install
 
@@ -79,21 +92,22 @@ The default server is `https://kue.ischca.dev`. Use `--server URL` for staging o
 local development.
 One Expo app in the workspace is selected automatically. With multiple apps,
 use `npx kue-qa init --app apps/mobile`; no app is selected implicitly.
-To pin setup, use `npx kue-qa@0.3.4 init`. The CLI installs the SDK at the same
-exact version. Existing beta versions remain available for reproducible testing.
+To use the current published version, run `npx kue-qa@latest init`. The CLI installs
+the SDK at the same exact version. Existing beta versions remain available for reproducible testing.
 No Cloud account is needed to use the SDK with your own `onSubmit` callback.
 See the [SDK installation and API documentation](packages/react-native/README.md) for
 manual integration and the [CLI documentation](packages/cli/README.md) for tarball setup.
 Upgrades use normal package versions and your app's lockfile; yalc is not required.
 
 From CLI 0.3.4, repeating `init` with unchanged managed configuration, integration,
-and installed dependencies is a no-op: it does not restart approval, run the
-package manager, or rewrite files. Use `--reconnect` to explicitly reconnect.
+and installed dependencies does not restart approval, run the package manager,
+or rewrite files. Version 0.3.6 still reads the current plan when recording is
+set to `auto`; `off` skips that read. Use `--reconnect` to explicitly reconnect.
 See the [CLI documentation](packages/cli/README.md#idempotent-setup) for update,
 dependency, and configuration rules. Versions 0.3.3 and earlier repeat approval
 and installation; use `npx kue-qa@latest init` to select the current CLI.
 
-The floating button defaults to the KUE text design. Use
+The floating button defaults to a viewfinder design. Use
 `<Kue buttonDesign="mascot" />` to select the bundled character with the same gestures.
 
 ## Data handling

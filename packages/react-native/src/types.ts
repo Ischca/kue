@@ -54,6 +54,38 @@ export interface ReportIssueOptions {
   context?: Partial<KueReportContext>;
 }
 
+export interface KueCapturedVideo {
+  uri: string;
+  width: number;
+  height: number;
+  durationMs: number;
+  byteSize: number;
+  mimeType: "video/mp4";
+  capturedAt: string;
+}
+export interface KueVideoReport {
+  clientReportId: string;
+  memo: string;
+  video: KueCapturedVideo;
+  context: KueReportContext;
+  capturedAt: string;
+}
+export type KueFinding = KueLocalReport | KueVideoReport;
+
+/** One ordered Issue submission. Every finding consumes one capture of quota. */
+export interface KueReportGroup {
+  clientReportId: string;
+  title: string;
+  findings: readonly KueFinding[];
+}
+export interface KueProjectFeatures {
+  groups: boolean;
+  recording: { entitled: boolean; available: boolean };
+}
+export type KueGroupSubmitHandler = (group: KueReportGroup) => void | Promise<void>;
+/** Runtime opt-out. Native inclusion is resolved separately by the CLI before building. */
+export type KueRecordingMode = "auto" | "off";
+
 export type KueCaptureAdapter = () => Promise<KueCapturedImage>;
 /**
  * Receives a report while its temporary screenshot URI is valid. Copy or upload the image
@@ -99,6 +131,8 @@ export type KueCloudErrorCode =
   | "upload_rejected";
 
 export interface KueProps {
+  /** Defaults to auto. off prevents recording but does not rewrite an installed binary. */
+  recording?: KueRecordingMode;
   /** Opt-in, SDK-owned durable Cloud outbox: 10 reports / 50MB / 7 days. No background tasks. */
   offlineQueue?: boolean;
   /** Locally persisted, not yet accepted by Cloud. Does not call onReceipt. */
@@ -113,6 +147,8 @@ export interface KueProps {
   enabled?: boolean;
   /** Phase 1/custom handler. Takes priority over `cloud`. */
   onSubmit?: KueSubmitHandler;
+  /** Handles an explicitly confirmed group. Never falls back to one onSubmit per finding. */
+  onSubmitGroup?: KueGroupSubmitHandler;
   /** Uploads to KUE Cloud when `onSubmit` is not provided. */
   cloud?: KueCloudConfig;
   /** Called after KUE Cloud accepts the report with HTTP 202. */

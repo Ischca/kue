@@ -8,6 +8,9 @@ import type {
   KueReceipt,
   KueReceiptStatus,
   KueReportStatus,
+  KueReportGroup,
+  KueProjectFeatures,
+  KueFinding,
 } from "./types";
 
 declare const __DEV__: boolean;
@@ -123,7 +126,11 @@ export function normalizeKueCloudConfig(
   };
 }
 
-function createMetadata(report: KueLocalReport): string {
+function createMetadata(report: KueFinding): string {
+  if ("video" in report) return JSON.stringify({ schemaVersion: 2, context: report.context, capture: {
+    kind: "video", capturedAt: report.capturedAt, mimeType: "video/mp4", durationMs: report.video.durationMs,
+    outputSize: { width: report.video.width, height: report.video.height },
+  } });
   return JSON.stringify({
     schemaVersion: 1,
     context: report.context,
@@ -174,11 +181,13 @@ async function rejectedUploadError(response: Response): Promise<KueCloudError> {
 
   let message = `KUE Cloud rejected the report (HTTP ${status}).`;
   if (status === 401 || status === 403) message = "KUE projectKey was rejected.";
-  if (status === 413) message = "The KUE screenshot is too large to upload.";
+  if (status === 413) message = "The KUE capture is too large to upload.";
   if (status === 429) message = "KUE Cloud is receiving too many reports. Please try again.";
   if (quotaExceeded) message = "The KUE monthly report quota has been reached.";
   if (serverCode === "project_plan_paused") message = "This project is paused on KUE Free. Select it in the dashboard or upgrade to Indie.";
   if (serverCode === "storage_quota_exceeded") message = "KUE image storage is full. Free space in the dashboard or upgrade from Free to Indie.";
+  if (serverCode === "recording_requires_indie") message = "Screen recording requires an active Indie subscription. Check the workspace plan in the dashboard.";
+  if (serverCode === "recording_unavailable") message = "Screen recording is not enabled on this KUE Cloud.";
 
   return new KueCloudError(message, {
     code: "upload_rejected",
@@ -228,13 +237,42 @@ export async function submitKueReport(
   formData.append("memo", report.memo);
   formData.append("metadata", createMetadata(report));
 
+  return uploadForm(clientReportId, formData, normalized, normalized.endpoint);
+}
+
+export async function submitKueReportGroup(group: KueReportGroup, config: KueCloudConfig): Promise<KueReceipt> {
+  if (!CLIENT_REPORT_ID_PATTERN.test(group.clientReportId) || !group.title.trim() ||
+    /[\r\n\u0000]/u.test(group.title) || Array.from(group.title.trim()).length > 200 ||
+    group.findings.length < 1 || group.findings.length > 10) {
+    throw new KueCloudError("A group requires an ID, a title and 1–10 findings.", { code: "invalid_report" });
+  }
+  const normalized = normalizeKueCloudConfig(config);
+  const form = new FormData();
+  const manifest = JSON.stringify({ schemaVersion: 1, title: group.title.trim(),
+    findings: group.findings.map(report => ({ memo: report.memo, metadata: JSON.parse(createMetadata(report)) })) });
+  if (new TextEncoder().encode(manifest).byteLength > 48 * 1024) throw new KueCloudError("Group notes and metadata exceed 48 KiB.", { code: "invalid_report" });
+  form.append("manifest", manifest);
+  let total = 0;
+  group.findings.forEach((report, index) => {
+    const file = new File("video" in report ? report.video.uri : report.screenshot.uri);
+    total += file.size;
+    if (file.size <= 0 || file.size > ("video" in report ? 20 : 10) * 1024 * 1024 || total > 20 * 1024 * 1024) {
+      throw new KueCloudError("Images: 10 MiB each; recordings and total: 20 MiB.", { code: "invalid_report" });
+    }
+    form.append(`capture_${index}`, file);
+  });
+  return uploadForm(group.clientReportId, form, normalized, normalized.endpoint.replace(/\/reports$/u, "/report-groups"));
+}
+
+async function uploadForm(clientReportId: string, formData: FormData, normalized: NormalizedCloudConfig, endpoint: string): Promise<KueReceipt> {
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), normalized.timeoutMs);
 
   try {
     let response: Response;
     try {
-      response = await expoFetch(normalized.endpoint, {
+      response = await expoFetch(endpoint, {
         method: "POST",
         // A 307/308 must never resend screenshots or tokens to another origin.
         redirect: "error",
@@ -300,6 +338,29 @@ export async function submitKueReport(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/** Entitlements are advisory for UI; admission is always checked by Cloud again. */
+export async function getKueProjectFeatures(config: KueCloudConfig): Promise<KueProjectFeatures> {
+  const normalized = normalizeKueCloudConfig(config);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), normalized.timeoutMs);
+  try {
+    const response = await expoFetch(normalized.endpoint.replace(/\/reports$/u, "/project/features"), {
+      redirect: "error", credentials: "omit", signal: controller.signal,
+      headers: { Accept: "application/json", Authorization: `Bearer ${normalized.projectKey}` },
+    });
+    if (!response.ok) throw await rejectedUploadError(response);
+    const body = await response.json() as KueProjectFeatures & { schemaVersion?: number };
+    if (body?.schemaVersion !== 1 || typeof body.groups !== "boolean" || typeof body.recording?.entitled !== "boolean" ||
+      typeof body.recording.available !== "boolean") throw new KueCloudError("Could not verify KUE features.", { code: "unexpected_response", retryable: true });
+    if (controller.signal.aborted) throw requestTimeoutError();
+    return { groups: body.groups, recording: { ...body.recording } };
+  } catch (cause) {
+    if (controller.signal.aborted) throw requestTimeoutError(cause);
+    if (cause instanceof KueCloudError) throw cause;
+    throw new KueCloudError("Could not verify KUE features. Check the connection and try again.", { code: "network_error", retryable: true });
+  } finally { clearTimeout(timeout); }
 }
 
 /** Read one receipt. No automatic polling, background task, or use of the public ingest key. */

@@ -1,6 +1,6 @@
 {
   "name": "kue-qa",
-  "version": "0.3.4",
+  "version": "0.3.6",
   "description": "Connect an Expo app to KUE screenshot-to-GitHub issue reporting.",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/Ischca/kue.git", "directory": "packages/cli" },

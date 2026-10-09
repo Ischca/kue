@@ -2,7 +2,7 @@
 
 KUE adds screen capture, cropping, and memo entry to Expo / React Native apps. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Version: SDK and CLI **0.3.4**. This documentation covers installation, public APIs, and Cloud usage limits.
+Target version: SDK and CLI **0.3.6**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
@@ -12,6 +12,8 @@ Version: SDK and CLI **0.3.4**. This documentation covers installation, public A
 | OS | iOS and Android. Web screen capture is not supported |
 | CLI | Node.js 22.13 or later |
 | License | SDK and CLI: MIT. Cloud: a separately provided hosted service |
+
+When building an Expo SDK 57 app with Xcode 27 (the iOS 27 SDK), use `expo@57.0.23` or later, set `ios.enableSceneSupport` to `true` in `expo-build-properties`, and regenerate the iOS project. An app built with the iOS 27 SDK without scene support cannot launch on iOS 27.
 
 Cloud integration requires a GitHub account and installation of the KUE QA GitHub App on the destination repository. The connecting user must own the personal repository or be an organization owner, and must also have administrator permission on the repository. Contact [support](mailto:kue@ischca.dev) if the App cannot be installed.
 
@@ -57,7 +59,7 @@ The initial action is bound to the browser, signed-in account, and destination, 
 
 The following behavior applies to CLI 0.3.4 and later. Version 0.3.3 and earlier repeat connection approval, dependency installation, and configuration writes on subsequent runs.
 
-Ordinary `init` exits without browser approval, network requests, package-manager execution, or file writes when the managed connection, integration, and installed dependencies are unchanged. File modification times and the lockfile are preserved. Existing 0.3.3 configuration files are supported. This is a local-state check, not a validation of Cloud connectivity or key validity.
+Ordinary `init` exits without browser approval, package-manager execution, or file writes when the managed connection, integration, and installed dependencies are unchanged. File modification times and the lockfile are preserved. With `recording: auto`, it still reads the current Cloud plan; `off` skips that read. Existing 0.3.3 configuration files are supported. Local-state and plan checks do not guarantee that submission is available.
 
 | State or option | Behavior |
 | --- | --- |
@@ -86,6 +88,8 @@ When an installation is necessary, the package manager may update related lockfi
 | `--no-open` | Print the approval link without opening a browser |
 | `--config project.json` | Use public configuration JSON from the dashboard instead of browser approval |
 | `--skip-install` | Skip dependency installation; install required packages separately |
+| `--skip-integration` | Keep a manually mounted component without reading or editing JSX. Cannot be combined with `--root` |
+| `--recording auto\|off` | Include the recorder according to the plan or explicitly exclude it. Default: `auto` |
 | `--server https://YOUR-KUE-HOST` | Override the Cloud server. Default: `https://kue.ischca.dev` |
 | `--sdk /path/to/sdk.tgz` | Use a local SDK tarball for testing |
 
@@ -97,25 +101,38 @@ With `--config`, the server URL comes from the JSON file. If the root component 
 
 | File | Contents and handling |
 | --- | --- |
-| `.kue/config.js` / `.kue/config.d.ts` | Connection configuration and types, including a public create-only key. May be committed |
+| `.kue/config.js` / `.kue/config.d.ts` | Connection configuration and types, including the public project key. May be committed |
 | `.kue/backup-*.txt` | Original application source. Keep local and exclude from commits |
 
 The CLI does not store GitHub user tokens or billing credentials in the application.
+
+### Setup for manually mounted components
+
+In CLI 0.3.6, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
+
+```sh
+kue-qa init --skip-integration
+kue-qa init --skip-integration --reconnect
+```
+
+Once, pass `kueCloudConfig` from `.kue/config.js` and `kueRecordingMode` from `.kue/recording.js` to the existing `Kue` component. The CLI does not verify the manual integration. Subsequent runs reuse the connection and leave files unchanged when configuration and dependencies match. Auto mode still performs a read-only plan request. Use `--reconnect` to retrieve the key again or change the destination.
+
+After a newer CLI updates the SDK, review the diff and use the application's existing build and distribution workflow. Changes to native recording inclusion require a native rebuild. The CLI does not start builds or distribute to TestFlight or Google Play.
 
 ## Manual SDK installation
 
 ### Dependencies
 
-The example uses npm. Use the application's existing package manager and maintain one lockfile format.
+Install SDK 0.3.6 with the application's existing package manager and maintain one lockfile format.
 
 ```sh
-npm install @kue-qa/react-native@0.3.4
+npm install @kue-qa/react-native@0.3.6
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
 ```
 
 ### Cloud connection and mounting
 
-Add the public configuration obtained from the dashboard to `.env.local`. Replace the example key with the project's create-only key. Do not use GitHub tokens or private keys.
+Add the public configuration obtained from the dashboard to `.env.local`. Replace the example key with the project key of the target project. Do not use GitHub tokens or private keys.
 
 ```dotenv
 EXPO_PUBLIC_KUE_API_BASE_URL=https://kue.ischca.dev
@@ -178,7 +195,7 @@ The image URI references a temporary file. Copy or upload the image before the c
 
 ### Floating button
 
-The default is the KUE text button. Set `buttonDesign="mascot"` to display the character. Both designs share the same gestures and touch target. The image is bundled with the SDK; no additional download or native dependency is required.
+The default is a viewfinder button. Set `buttonDesign="mascot"` to display the character. Both designs share the same gestures and touch target. The image is bundled with the SDK; no additional download or native dependency is required.
 
 ```tsx
 <Kue cloud={cloud} buttonDesign="mascot" />
@@ -190,13 +207,95 @@ The default is the KUE text button. Set `buttonDesign="mascot"` to display the c
 | Drag | Move the button without capturing |
 | Release at a screen edge | Dock the button as a small handle |
 | Tap the handle | Restore the button |
-| Long-press and release | Open pending reports when the offline queue is enabled |
+| Hold for about 0.5 seconds and release over an item | Select an action from the fan menu; pending reports appear there when the offline queue is enabled |
 
 Position is not retained across application restarts.
 
 ### Issue contents
 
 Issues contain the cropped image, memo, and device/application metadata. The default label is `kue`. KUE creates the label when missing and leaves existing label settings unchanged. Custom label names are not supported.
+
+### Grouped findings
+
+SDK 0.3.6 and production Cloud can submit multiple images or videos in one Issue.
+
+1. Hold the KUE button for approximately 0.5 seconds. A fan-shaped menu opens while the finger remains down. Slide to preview the Collect findings label, then release over that item to select it.
+2. Select an image area, enter a memo, and select Add to group. Nothing is uploaded yet.
+3. Continue using the application and tap KUE to add another finding. The button displays the count.
+4. Select Review group from the long-press menu to inspect images and memos and remove unwanted findings.
+5. Enter an Issue title and select Send as one Issue.
+
+The menu fans out from the KUE button in a direction that fits within the screen and safe area. Release at the button center or away from menu items to cancel. Moving before the menu opens drags the button as before. Rotation, backgrounding and multitouch cancel selection. TalkBack/VoiceOver users can choose from a list through the Show actions menu accessibility action. Exceptionally small host surfaces also use the list.
+
+Free and Indie allow 1–10 findings, up to 10 MiB per image and 20 MiB in total. Usage counts findings, not Issues: a group of three consumes three captures. Acceptance is atomic; a quota or storage failure cannot accept only part of the group.
+
+Drafts last for the application session; images are copied to SDK-owned temporary storage. Drafts are not restored after application termination, moved into the offline outbox, or sent automatically. Changing the project key or server never moves an existing draft to another destination.
+
+After the first submission attempt, content is frozen and retries reuse the same identifier and payload. An uncertain receipt does not trigger a new identifier. Discarding the local draft does not cancel an Issue already accepted by Cloud. To return to individual submissions, select Screenshot from the long-press menu.
+
+Screen recording remains visible on Free as a locked menu item that explains Indie access. A failed plan check is distinct from Free.
+
+### Screen recording
+
+A recording-capable native build and active Indie entitlement are required. Production Cloud supports video admission.
+
+1. Select Screen recording from the KUE long-press menu and review the OS recording consent prompt.
+2. During recording, the KUE button becomes a red-square stop control at the same position. Tap it to stop. It remains draggable, but edge hiding and the long-press menu are disabled. Android also allows stopping from the recording notification.
+3. After stopping, select Play video to review it, enter a memo, then select Add to draft and review. Nothing is uploaded yet. Select Discard recording and return to delete it instead.
+4. Confirm the Issue title and findings, then send. You can also go back to add images or videos.
+
+Recordings are silent H.264 MP4, limited to 60 seconds and 20 MiB. App audio and microphone input are not captured. Recording stops automatically with a margin before time or size limits. Backgrounding, screen lock and OS termination also stop recording. On iOS, a change to captured frame dimensions stops recording. Protected screens may not be recordable.
+
+Each video counts as one finding. Images and videos can be mixed within the shared limit of 10 findings and 20 MiB. Videos use session-local temporary storage and do not enter the offline outbox. If the workspace returns to Free before submission, the entire group containing video is rejected; no partial submission occurs. Entitlement is checked at recording start and admission. Replaying identical accepted content does not consume additional quota.
+
+The Issue contains a link to open the video. Anyone with its URL can view it; do not record confidential information. Videos use the same storage quota, retention and deletion rules as images. Video cropping and editing are not supported.
+
+### Recording build configuration
+
+CLI 0.3.6 manages native recorder inclusion.
+
+Set `kue.recording` in the selected application's `package.json`. The default is `auto`. `init` checks the connected workspace entitlement and configures the native recorder for exclusion on Free or inclusion on Indie. `off` excludes it regardless of plan. Screenshot dependencies are not excluded.
+
+```sh
+kue-qa init
+kue-qa init --recording off
+kue-qa init --recording auto
+kue-qa check
+```
+
+1. Run `init` for initial setup. In `auto` mode, it makes a read-only Cloud check whether or not browser approval is needed. Use `--recording off` to opt out. An explicit setting persists on subsequent runs.
+2. After changing the plan or recording setting, run `init` again and review the diff. Repeating it with unchanged plan, settings and dependencies preserves file bytes and modification times. Network, authentication and response-validation failures are not interpreted as Free; existing settings are preserved and setup exits with an error.
+3. Rebuild using the application's existing build workflow when native inclusion changes. The CLI does not start builds or distribution automatically. Expo Go cannot load a custom native recorder.
+4. Use `check` with managed configuration to detect mismatches between the plan, configuration and native inclusion. Mismatches fail without repairing settings. `--config` and `--env` verify Cloud admission only, not the application's recording build configuration.
+
+Ordinary native builds use the saved inclusion settings without Cloud plan lookups or configuration changes. Commit changes to `package.json`, `.kue/recording.js` and `.d.ts`, `.kue/setup.json`, and the app root. Do not edit generated files directly. `--dry-run` performs no requests or writes and therefore does not verify the current plan. `--skip-install` skips dependency installation only; `auto` still checks the plan and updates configuration.
+
+Updating configuration does not change an installed application. When a recording-capable build is needed, the UI gives rebuild instructions without repeating the plan status. Free locks, connection failures, explicit opt-out and Cloud unavailability are distinct states. Build configuration does not grant entitlement; recording start and submission require separate Cloud checks.
+
+### Pre-build admission check
+
+Before distributing a build, check whether the selected app can currently submit using its managed configuration.
+
+```sh
+npx kue-qa@0.3.6 check
+```
+
+Use `--app` to select the app. Alternatively, `--config project.json` reads dashboard JSON, or `--env` reads the already-resolved build variables `EXPO_PUBLIC_KUE_MODE`, `EXPO_PUBLIC_KUE_API_BASE_URL`, `EXPO_PUBLIC_KUE_PROJECT_KEY`, and optional `EXPO_PUBLIC_KUE_ENABLED`. These three configuration sources are mutually exclusive. Never put a key in a command argument. `--env` does not load dotenv; resolve the values used by Expo/EAS before invoking it.
+
+`check` sends an authenticated GET to verify the current key, project admission, quota/storage and delivery configuration. It exits with code 0 on acceptance. Rejection, network or timeout failures, unsupported servers and invalid responses exit nonzero. The timeout is 10 seconds. The command does not change configuration or quota and does not create reports or Issues. Explicit local mode or `EXPO_PUBLIC_KUE_ENABLED=false` skips network access. Missing configuration is an error, not a successful skip.
+
+With managed configuration, it also compares recorder inclusion with the current plan. `--config` and `--env` check Cloud admission only. A pass does not guarantee GitHub permissions, queue/storage availability, physical capture, or protection against later key revocation or quota changes. Test actual submission from the distribution build.
+
+### Group and recording APIs
+
+| API | Input, result and limitations |
+| --- | --- |
+| `onSubmitGroup` | Custom handler receiving a `KueReportGroup`. It does not call `onSubmit` once per finding. Copy or upload required images/videos before resolving |
+| `submitKueReportGroup(group, cloud)` | Submits `clientReportId`, `title` and ordered `findings` together and returns one `KueReceipt`. Never falls back to individual uploads on an unsupported server |
+| `getKueProjectFeatures(cloud)` | Returns group support and recording entitlement/availability. Authentication and network failures throw. A client-supplied plan is not accepted |
+| `KueProps.recording` | `"auto" \| "off"`, default `auto`. `off` disables recording at runtime. Native exclusion is managed by CLI build configuration; this prop alone does not remove code from the binary |
+
+`KueReportGroup.findings` is an array of `KueFinding` (`KueLocalReport | KueVideoReport`). `KueVideoReport` contains `clientReportId`, `memo`, `context`, `capturedAt` and `video`. The `video` contains `uri`, `width`, `height`, `durationMs`, `byteSize`, `mimeType: "video/mp4"` and `capturedAt`. Media URIs must remain valid until submission finishes. When using a custom `onSubmit`, provide `onSubmitGroup` separately to enable grouped submissions. Each draft retains the handler supplied at creation; a rerender supplying another function does not retarget the existing draft.
 
 ## SDK configuration reference
 
@@ -211,7 +310,7 @@ All props are optional. Submission or storage requires either `cloud` or `onSubm
 | `onSubmit` | Not set | Custom storage callback. Takes precedence over `cloud` |
 | `context` | `{}` | Add to or override automatically collected metadata |
 | `floatingButton` | `true` | Show the button. Other triggers remain available when `false` |
-| `buttonDesign` | `"classic"` | `"classic"` uses the text button; `"mascot"` uses the character |
+| `buttonDesign` | `"classic"` | `"classic"` uses the viewfinder button; `"mascot"` uses the character |
 | `triggers` | Not set | Array of additional trigger sources |
 | `offlineQueue` | `false` | Persist pending Cloud submissions on the device |
 | `onQueued` | Not set | Notify with `clientReportId` after local persistence when Cloud has not accepted the report |
@@ -226,7 +325,7 @@ For internal QA release builds, set `enabled` using an explicit application-owne
 | Property | Required / default | Description |
 | --- | --- | --- |
 | `apiBaseUrl` | Required | Cloud base URL, without `/v1/reports` |
-| `projectKey` | Required | Public create-only key in `pk_...` format |
+| `projectKey` | Required | Project key in `pk_...` format. Public, and usable only to submit reports |
 | `timeoutMs` | Default `15000` | HTTP request timeout in milliseconds |
 
 ### Metadata
@@ -333,7 +432,7 @@ There is no SDK-specific encryption. Backups follow the host application's polic
 
 A workspace corresponds to one GitHub personal account or organization and owns its subscription, projects, and usage. Repositories belonging to a different GitHub owner require a separate workspace. Renaming a repository does not change its workspace. Transferring it to a different GitHub owner does not automatically change its KUE workspace.
 
-Management requires signing in with your own GitHub account, KUE workspace membership, and current GitHub owner permissions. A create-only key does not grant management access. There are no per-tester or per-device charges, but one subscription cannot cover separate owners or separate clients' work. Member invitations are not supported.
+Management requires signing in with your own GitHub account, KUE workspace membership, and current GitHub owner permissions. A project key does not grant management access. There are no per-tester or per-device charges, but one subscription cannot cover separate owners or separate clients' work. Member invitations are not supported.
 
 ### Dashboard
 
@@ -367,7 +466,7 @@ Self-service transfer is limited to Free organization workspaces for which no St
 2. The current KUE owner enters the recipient's GitHub username and the organization name in the dashboard to request a transfer.
 3. The recipient verifies the organization name in their dashboard and accepts within 24 hours. The sender can cancel; the recipient can decline.
 
-Purchases are unavailable while a transfer is pending. Completion removes the previous owner's KUE management access but preserves projects, submission keys, and usage. The new owner should rotate submission keys if necessary. This operation does not change GitHub organization ownership itself.
+Purchases are unavailable while a transfer is pending. Completion removes the previous owner's KUE management access but preserves projects, project keys, and usage. The new owner should rotate project keys if necessary. This operation does not change GitHub organization ownership itself.
 
 ### Workspace deletion and account removal
 
@@ -409,11 +508,9 @@ Submission counts and storage are shared across the workspace. One MB is 1,000,0
 
 New submissions are rejected when monthly quota or storage capacity is reached. There are no automatic overage charges. Accepted reports count toward the monthly quota even if delivery fails; retrying or deleting a report does not restore quota.
 
-Free permits one connected project. If multiple projects remain after returning from Indie to Free, only the selected project can submit; the others are paused. If storage exceeds the Free limit, even the active project cannot submit new reports. Sales availability and conditions are listed on the [pricing page](https://kue.ischca.dev/en/pricing).
+Free allows multiple saved connections, but only the selected project can submit; the others are paused. The same restriction applies after returning from Indie to Free. If storage exceeds the Free limit, even the active project cannot submit new reports. Sales availability and conditions are listed on the [pricing page](https://kue.ischca.dev/en/pricing).
 
-### Free destination switching (unreleased)
-
-The following Cloud change has not been deployed. It replaces the published connection limit above and does not yet apply in production. Published SDK and CLI versions remain 0.3.4.
+### Free destination switching
 
 Multiple connections can be saved, but only the selected repository can accept new Free submissions. The first connection is the initial selection. Connecting another repository asks for confirmation showing the current and proposed destinations. Canceling preserves the connection without changing the destination or completing CLI setup. Switching existing destinations does not require key rotation or manual environment-variable updates.
 
@@ -423,9 +520,9 @@ Expiry does not switch the destination automatically. Use **Use this project on 
 
 The switching restriction follows the immutable GitHub repository ID. Renaming, project or workspace deletion/recreation, and switching between Free and Indie do not remove it. Active Indie subscriptions allow multiple projects to submit. Returning to Free restores the saved selection and any unexpired switching restriction; a deleted selection is not automatically replaced with another project. The 100 monthly reports and storage capacity are shared across projects and do not reset on switching. This restriction applies to repositories within a GitHub owner's workspace, not to the number of apps or devices using the same repository and key.
 
-A valid key for an inactive project returns `project_plan_paused`; a switch during the restriction returns `free_project_locked`. These differ from an invalid or revoked key. Repository and billing details are shown only after GitHub sign-in, never disclosed through an invalid submission key. The dashboard distinguishes payment issues confirmed by Stripe synchronization, an ended subscription and an unconfirmed paid period. Returning to Free does not itself cancel a subscription; payment retries may continue.
+A valid key for an inactive project returns `project_plan_paused`; a switch during the restriction returns `free_project_locked`. These differ from an invalid or revoked key. Repository and billing details are shown only after GitHub sign-in, never disclosed through an invalid project key. The dashboard distinguishes payment issues confirmed by Stripe synchronization, an ended subscription and an unconfirmed paid period. Returning to Free does not itself cancel a subscription; payment retries may continue.
 
-To prevent deletion/recreation from bypassing the switching restriction, KUE separately retains a secret-keyed hash of the GitHub owner's ID and type, the selected GitHub repository ID and the existing deadline after workspace deletion. This record contains no personal or repository names, submission keys, submitted content or Stripe IDs. It is pseudonymized, not guaranteed anonymous. It is no longer used after expiry and is removed by scheduled cleanup. Deletion never extends the 24-hour deadline.
+To prevent deletion/recreation from bypassing the switching restriction, KUE separately retains a secret-keyed hash of the GitHub owner's ID and type, the selected GitHub repository ID and the existing deadline after workspace deletion. This record contains no personal or repository names, project keys, submitted content or Stripe IDs. It is pseudonymized, not guaranteed anonymous. It is no longer used after expiry and is removed by scheduled cleanup. Deletion never extends the 24-hour deadline.
 
 ### Expiry and deletion
 
@@ -439,8 +536,10 @@ Deleting and recreating a workspace does not reset the current month's quota. To
 
 ### Access and sensitive data
 
+- Use HTTPS for Cloud communication. HTTP requests to APIs, authentication endpoints, and images are rejected with 403. Only GET/HEAD requests to standard pages without a query string, Authorization, or Cookie receive a 308 redirect to HTTPS. Redirecting or rejecting a request cannot protect data already sent over HTTP.
 - Anyone with an image URL can view the image. Access is not tied to GitHub repository permissions, including for private repositories.
-- The create-only key is public configuration suitable for embedding in the application. A third party who obtains it can also submit reports. Rotate the key if abused.
+- The project key is public configuration suitable for embedding in the application. A third party who obtains it can also submit reports. Rotate the key if abused.
+- After rotation, the old key cannot submit new reports. Rotation does not cancel delivery of previously accepted reports or revoke their image URLs.
 - Do not log images, memos, or receipt tokens. Remove secrets and personal information before submission.
 
 Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privacy Policy](https://kue.ischca.dev/en/privacy).
@@ -449,16 +548,16 @@ Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privac
 
 ### SDK upgrades
 
-Install the current stable version explicitly. For another release, verify the published version and release notes before replacing the version number.
+The following commands upgrade to published version 0.3.6. For another release, verify the published version and release notes before replacing the version number.
 
 ```sh
-npm install @kue-qa/react-native@0.3.4
+npm install @kue-qa/react-native@0.3.6
 ```
 
 To upgrade the SDK with the CLI, specify the target version. Existing connection configuration is reused. Add `--reconnect` only when retrieving configuration again.
 
 ```sh
-npx kue-qa@0.3.4 init
+npx kue-qa@0.3.6 init
 ```
 
 The CLI uses the SDK at its own version. CLI 0.3.4 and later refuse implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
@@ -477,11 +576,11 @@ Uninstalling the SDK does not delete Cloud projects or GitHub Issues.
 
 ### Connection configuration for builds and distribution
 
-Verify the Cloud URL and public create-only key in the build environment that embeds them in the app. Editing local `.env.local` does not update EAS environment variables or an already distributed app. Environment variables already set in the build environment take precedence over local files.
+Verify the Cloud URL and project key in the build environment that embeds them in the app. Editing local `.env.local` does not update EAS environment variables or an already distributed app. Environment variables already set in the build environment take precedence over local files.
 
 After rotating a key or recreating a project, update each build environment, rebuild the app, and distribute the new build. Do not substitute a key belonging to a different repository. Existing queued entries are not automatically migrated to the new key.
 
-Published CLI 0.3.4 does not validate an existing key against Cloud during `init`. Successful local setup does not confirm that submission is available. Before distribution, check the target project and plan-related pausing in the dashboard, and test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
+Completing CLI 0.3.6 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
 
 ### Symptoms and checks
 

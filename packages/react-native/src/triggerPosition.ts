@@ -64,9 +64,9 @@ export function moveTriggerGesture(gesture: TriggerGesture, dx: number, dy: numb
   return fitTriggerPosition({ x: gesture.start.x + dx, y: gesture.start.y + dy, edge: null }, bounds);
 }
 
-export function endTriggerGesture(gesture: TriggerGesture, dx: number, dy: number, bounds: TriggerBounds): { position: TriggerPosition; capture: boolean } {
+export function endTriggerGesture(gesture: TriggerGesture, dx: number, dy: number, bounds: TriggerBounds, canHide = true): { position: TriggerPosition; capture: boolean } {
   const point = moveTriggerGesture(gesture, dx, dy, 0, bounds);
-  if (gesture.cancelled) return { position: fitTriggerPosition(gesture.start, bounds), capture: false };
-  if (gesture.dragged) return { position: settleTriggerPosition(point, bounds), capture: false };
-  return { position: revealTrigger(gesture.start, bounds), capture: gesture.start.edge === null };
+  if (gesture.cancelled) return { position: canHide ? fitTriggerPosition(gesture.start, bounds) : revealTrigger(gesture.start, bounds), capture: false };
+  if (gesture.dragged) return { position: canHide ? settleTriggerPosition(point, bounds) : revealTrigger(point, bounds), capture: false };
+  return { position: revealTrigger(gesture.start, bounds), capture: gesture.start.edge === null || !canHide };
 }

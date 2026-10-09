@@ -1,6 +1,6 @@
 {
   "name": "@kue-qa/react-native",
-  "version": "0.3.4",
+  "version": "0.3.6",
   "description": "Capture visual issues while developing Expo and React Native apps.",
   "license": "MIT",
   "repository": {
@@ -35,6 +35,12 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
+    "expo-module.config.json",
+    "ios/*.swift",
+    "ios/*.podspec",
+    "android/build.gradle",
+    "android/src/main/AndroidManifest.xml",
+    "android/src/main/java/**/*.kt",
     "README.md",
     "LICENSE"
   ],

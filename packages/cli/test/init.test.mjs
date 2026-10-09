@@ -31,6 +31,7 @@ for (const [name, args, server] of [
     const cwd = await appFixture();
     const request = t.mock.method(globalThis, "fetch", async (url, init) => {
       assert.equal(init.redirect, "error");
+      if (url === `${server}/v1/project/features`) return Response.json({ schemaVersion: 1, recording: { entitled: false, available: false } });
       if (url === `${server}/v1/bootstrap`) {
         assert.equal(init.method, "POST");
         assert.deepEqual(JSON.parse(init.body), { repository: "owner/app" });
@@ -41,7 +42,7 @@ for (const [name, args, server] of [
       return Response.json({ status: "completed", config: { id: "project_example", workspaceId: "workspace_example", projectKey: "pk_server_test", apiBaseUrl: server } });
     });
     await main(["init", "--repository", "owner/app", "--no-open", "--skip-install", ...args], cwd);
-    assert.equal(request.mock.callCount(), 2);
+    assert.equal(request.mock.callCount(), 3);
     const config = await readFile(path.join(cwd, ".kue", "config.js"), "utf8");
     assert.ok(config.includes(`"apiBaseUrl": "${server}"`));
     assert.ok(config.includes("pk_server_test"));
@@ -104,7 +105,7 @@ test("validates server, config and GitHub origins", () => {
   assert.throws(() => validateConfig({ apiBaseUrl: "https://kue.test", projectKey: "sk_secret" }));
   assert.throws(() => validateConfig({ projectKey: "pk_test_12345" }));
 });
-test("initializes and refreshes from config without network; dry-run writes nothing", async (t) => {
+test("explicit off initializes and refreshes from config without network; dry-run writes nothing", async (t) => {
   const request = t.mock.method(globalThis, "fetch", () => { throw new Error("Unexpected network request"); });
   const cwd = await mkdtemp(path.join(os.tmpdir(), "kue-cli-test-"));
   await writeFile(path.join(cwd, "package.json"), JSON.stringify({ dependencies: { expo: "~57.0.0" }, packageManager: "pnpm@10.33.0" }));
@@ -117,7 +118,7 @@ test("initializes and refreshes from config without network; dry-run writes noth
   assert.ok(!(await readdir(cwd)).includes(".kue"));
   const config = path.join(cwd, "project.json");
   await writeFile(config, JSON.stringify({ projectKey: "pk_test_12345", apiBaseUrl: "https://kue.test" }));
-  await main(["init", "--config", config, "--skip-install"], cwd);
+  await main(["init", "--config", config, "--skip-install", "--recording", "off"], cwd);
   const first = await readFile(root, "utf8");
   assert.ok(first.includes('"../.kue/config.js"'));
   assert.equal((await readdir(path.join(cwd, ".kue"))).filter((f) => f.startsWith("backup-")).length, 1);
@@ -141,6 +142,6 @@ test("uses an explicit relative import for a root-level App.tsx", async () => {
   await writeFile(path.join(cwd, "package.json"), JSON.stringify({ dependencies: { expo: "~57.0.0" }, packageManager: "pnpm@10.33.0" }));
   await writeFile(path.join(cwd, "App.tsx"), "export default () => <View />;");
   await writeFile(path.join(cwd, "project.json"), JSON.stringify({ projectKey: "pk_root_test_12345", apiBaseUrl: "https://kue.test" }));
-  await main(["init", "--skip-install", "--config", "project.json"], cwd);
+  await main(["init", "--skip-install", "--config", "project.json", "--recording", "off"], cwd);
   assert.ok((await readFile(path.join(cwd, "App.tsx"), "utf8")).includes('from "./.kue/config.js"'));
 });

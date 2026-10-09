@@ -40,6 +40,7 @@ interface ReporterProps {
   onSubmit: KueSubmitHandler;
   onSubmitted: (report: KueLocalReport) => void;
   onSubmittingChange: (submitting: boolean) => void;
+  collecting?: boolean;
 }
 
 const asError = (value: unknown) =>
@@ -55,6 +56,7 @@ export function Reporter({
   onSubmit,
   onSubmitted,
   onSubmittingChange,
+  collecting = false,
 }: ReporterProps) {
   const [memo, setMemo] = useState(initialMemo);
   const [crop, setCrop] = useState<NormalizedCrop>({ ...FULL_CROP });
@@ -243,7 +245,7 @@ export function Reporter({
               ) : null}
 
               <Pressable
-                accessibilityLabel="KUEを送信"
+                accessibilityLabel={collecting ? "指摘をまとめに追加" : "KUEを送信"}
                 accessibilityRole="button"
                 disabled={submitting || memo.trim().length === 0}
                 onPress={() => void handleSubmit()}
@@ -257,7 +259,7 @@ export function Reporter({
                 {submitting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.sendText}>Send →</Text>
+                  <Text style={styles.sendText}>{collecting ? "まとめに追加 ＋" : "Send →"}</Text>
                 )}
               </Pressable>
             </View>

@@ -2,8 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { resolveAppDirectory } from "./app-directory.mjs";
-import { parseManagedConfig } from "./setup-state.mjs";
+import { parseManagedConfig, parseSetupState, readOptional } from "./setup-state.mjs";
 import { checkCloudConfig, cloudConfigFromEnvironment, validateCheckConfig } from "./check-client.mjs";
+import { checkRecordingSelection } from "./recording.mjs";
+import { marker } from "./codemod.mjs";
 
 export async function check(argv, cwd = process.cwd(), { env = process.env, request = fetch, log = console.log } = {}) {
   let values;
@@ -16,6 +18,7 @@ export async function check(argv, cwd = process.cwd(), { env = process.env, requ
   if (values.help) { log("kue-qa check [--app DIRECTORY | --config project.json | --env]\nRead-only Cloud admission check; exits nonzero when rejected or unverified.\n--env uses the already-resolved EXPO_PUBLIC_KUE_* environment, without loading dotenv.\nWithout --env/--config, reads the selected Expo app's .kue/config.js as data.\nNo authorization, uploads, installs or file writes. Run again immediately before distribution."); return; }
   if ([values.app !== undefined, values.config !== undefined, Boolean(values.env)].filter(Boolean).length > 1) throw new Error("Choose only one of --app, --config, or --env.");
   let config;
+  let recordingCheck;
   if (values.env) config = cloudConfigFromEnvironment(env);
   else if (values.config !== undefined) {
     try { config = validateCheckConfig(JSON.parse(await readFile(path.resolve(cwd, values.config), "utf8"))); }
@@ -24,8 +27,17 @@ export async function check(argv, cwd = process.cwd(), { env = process.env, requ
     const selected = await resolveAppDirectory(cwd, values.app);
     try { config = parseManagedConfig(await readFile(path.join(selected.directory, ".kue/config.js"), "utf8"), validateCheckConfig); }
     catch { throw new Error("Cannot read managed .kue/config.js. Restore it or use --config/--env for a manual integration."); }
+    const state = parseSetupState(await readOptional(path.join(selected.directory, ".kue/setup.json")), config);
+    if (state.recording) {
+      const source = await readOptional(path.join(selected.directory, ".kue/recording.js"));
+      if (source !== `${marker}\nexport const kueRecordingMode = ${JSON.stringify(state.recording.mode)};\n`) {
+        throw new Error("Managed recording mode differs from the saved build settings. Run kue-qa init; no files were changed.");
+      }
+      recordingCheck = () => checkRecordingSelection(selected.manifest, state.recording, config, { request });
+    }
   }
   if (config === null) { log("KUE check skipped: explicitly disabled or device-only mode."); return; }
   await checkCloudConfig(config, { request });
+  await recordingCheck?.();
   log("KUE Cloud admission check passed. No report was sent. This is a point-in-time check, not an end-to-end delivery guarantee.");
 }

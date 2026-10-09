@@ -59,6 +59,34 @@ describe("floating trigger placement", () => {
 });
 
 describe("trigger gesture intent", () => {
+  it.each([
+    [-999, 0], [999, 0], [0, -999], [0, 999],
+  ])("keeps a recording stop control fully visible after dragging %s/%s", (dx, dy) => {
+    const result = endTriggerGesture(beginTriggerGesture(free), dx!, dy!, bounds, false);
+    expect(result.capture).toBe(false);
+    expect(result.position.edge).toBeNull();
+    expect(result.position.x).toBeGreaterThanOrEqual(0);
+    expect(result.position.x).toBeLessThanOrEqual(bounds.width - TRIGGER_SIZE);
+    expect(result.position.y).toBeGreaterThanOrEqual(0);
+    expect(result.position.y).toBeLessThanOrEqual(bounds.height - TRIGGER_SIZE);
+    expect(endTriggerGesture(beginTriggerGesture(result.position), 0, 0, bounds, false).capture).toBe(true);
+  });
+
+  it("allows a recording stop tap even while revealing an old docked position", () => {
+    const hidden = fitTriggerPosition({ ...free, edge: "left" }, bounds);
+    expect(endTriggerGesture(beginTriggerGesture(hidden), 0, 0, bounds, false)).toEqual({
+      position: revealTrigger(hidden, bounds), capture: true,
+    });
+  });
+
+  it("preserves a recording button position when returning to screenshot mode", () => {
+    const recording = endTriggerGesture(beginTriggerGesture(free), 40, -70, bounds, false);
+    expect(recording.position).toEqual({ x: 180, y: 180, edge: null });
+    expect(endTriggerGesture(beginTriggerGesture(recording.position), 0, 0, bounds)).toEqual({
+      position: recording.position, capture: true,
+    });
+  });
+
   it("captures on a tap, ignoring small finger jitter", () => {
     const gesture = beginTriggerGesture(free);
     expect(moveTriggerGesture(gesture, 2, 2, 1, bounds)).toEqual(free);
