@@ -130,7 +130,8 @@ export type KueCloudErrorCode =
   | "unexpected_response"
   | "upload_rejected";
 
-export interface KueProps {
+/** Props shared by every destination. */
+export interface KueBaseProps {
   /** Defaults to auto. off prevents recording but does not rewrite an installed binary. */
   recording?: KueRecordingMode;
   /** Opt-in, SDK-owned durable Cloud outbox: 10 reports / 50MB / 7 days. No background tasks. */
@@ -145,12 +146,6 @@ export interface KueProps {
   triggers?: readonly KueTriggerSource[];
   /** Defaults to __DEV__. */
   enabled?: boolean;
-  /** Phase 1/custom handler. Takes priority over `cloud`. */
-  onSubmit?: KueSubmitHandler;
-  /** Handles an explicitly confirmed group. Never falls back to one onSubmit per finding. */
-  onSubmitGroup?: KueGroupSubmitHandler;
-  /** Uploads to KUE Cloud when `onSubmit` is not provided. */
-  cloud?: KueCloudConfig;
   /** Called after KUE Cloud accepts the report with HTTP 202. */
   onReceipt?: KueReceiptHandler;
   /** Called for capture and submit failures. */
@@ -160,3 +155,36 @@ export interface KueProps {
   /** Replaces native screen capture, primarily for tests and custom adapters. */
   capture?: KueCaptureAdapter;
 }
+
+/**
+ * Where submissions go. KUE Cloud always creates an Issue, but only the app knows what its own
+ * handler does, so a handler requires `submitLabel`. One of `cloud` or `onSubmit` is required.
+ */
+export type KueDestination =
+  | {
+      /** Uploads to KUE Cloud; the action reads 「Issueを作る」. */
+      cloud: KueCloudConfig;
+      onSubmit?: undefined;
+      onSubmitGroup?: undefined;
+      submitLabel?: undefined;
+    }
+  | {
+      /** Custom handler. Takes priority over `cloud`, which then only serves recording checks. */
+      onSubmit: KueSubmitHandler;
+      /** Handles an explicitly confirmed group. Never falls back to one onSubmit per finding. */
+      onSubmitGroup?: KueGroupSubmitHandler;
+      cloud?: KueCloudConfig;
+      /** Button text for the handler's action, such as 「Slackに送る」. Counts are appended. */
+      submitLabel: string;
+    }
+  | {
+      /** Single findings still create an Issue through Cloud. */
+      cloud: KueCloudConfig;
+      onSubmit?: undefined;
+      /** Confirmed groups go to this handler instead of Cloud. */
+      onSubmitGroup: KueGroupSubmitHandler;
+      /** Button text for the group handler's action. Counts are appended. */
+      submitLabel: string;
+    };
+
+export type KueProps = KueBaseProps & KueDestination;

@@ -16,9 +16,10 @@ import { retryPendingKueReports, submitWithOutbox } from "./outbox";
 import { OutboxView } from "./OutboxView";
 import { CaptureActions, useCaptureActions } from "./CaptureActions";
 import { GroupReview } from "./GroupReview";
-import { createGroupDraft } from "./groupDraftStorage";
+import { createGroupDraft, removeOrphanedGroupDrafts } from "./groupDraftStorage";
 import { RecordingFlow, type RecordingControl } from "./RecordingFlow";
 import { createClientReportId } from "./clientReportId";
+import { actionLabels, closedDraftNotice, draftAccepts, joinedFindings, planFindingAction, type FindingAction } from "./issueFlow";
 import type { GroupDraft } from "./groupDraft";
 import type {
   KueCapturedImage,
@@ -56,6 +57,7 @@ export function Kue({
   onSubmit,
   onSubmitGroup,
   cloud,
+  submitLabel,
   recording = "auto",
   onReceipt,
   onError,
@@ -72,20 +74,34 @@ export function Kue({
   const supportedPlatform = Platform.OS === "ios" || Platform.OS === "android";
   const active = (enabled ?? defaultEnabled()) && supportedPlatform;
   const captureAdapter = capture ?? captureCurrentScreen;
+  const { singleLabel, groupLabel, groupToCloud, missingLabel } = actionLabels({ cloud, onSubmit, onSubmitGroup, submitLabel });
   const [phase, setPhaseState] = useState<Phase>("idle");
   const [foreground, setForeground] = useState(AppState.currentState === "active");
   const [outboxVisible, setOutboxVisible] = useState(false);
   const [overlay, setOverlayState] = useState<"none" | "radial" | "actions" | "group" | "recording">("none");
   const [recordingControl, setRecordingControl] = useState<RecordingControl | null>(null);
   const overlayRef = useRef(overlay);
-  const setOverlay = (value: typeof overlay) => { overlayRef.current = value; setOverlayState(value); };
+  // Counts every overlay change, so a slow recording check never starts after the user moved on.
+  const overlayChangesRef = useRef(0);
+  // The finding screen stays mounted behind the saved findings it opened, keeping its capture, memo
+  // and crop. Leaving them returns to it, and the finding then joins the draft as it is by then.
+  const [savedOpen, setSavedOpen] = useState(false);
+  const savedOpenRef = useRef(false);
+  const setOverlay = (value: typeof overlay) => {
+    overlayRef.current = value; overlayChangesRef.current++; setOverlayState(value);
+    if (value !== "group" && savedOpenRef.current) {
+      savedOpenRef.current = false; setSavedOpen(false);
+      captureGroupRef.current = groupRef.current;
+    }
+  };
   const groupRef = useRef<GroupSession | null>(null);
   const captureGroupRef = useRef<GroupSession | null>(null);
   const recordingSessionRef = useRef<{ group: GroupSession | null; cloud: KueProps["cloud"]; onSubmitGroup: KueProps["onSubmitGroup"]; context: KueReportContext } | null>(null);
   const startingRecordingRef = useRef(false);
   const currentRecordingConfig = useRef({ recording, cloud });
   currentRecordingConfig.current = { recording, cloud };
-  const collectRef = useRef(false);
+  // Create Issue with collected findings opens the confirmation once the finding screen has closed.
+  const reviewAfterCloseRef = useRef(false);
   const [, refreshGroup] = useState(0);
   const changed = () => { if (mountedRef.current) refreshGroup(value => value + 1); };
   const group = groupRef.current;
@@ -132,6 +148,8 @@ export function Kue({
 
   const closeReporter = useCallback(() => {
     captureRef.current = null;
+    savedOpenRef.current = false;
+    setSavedOpen(false);
     setCurrentCapture(null);
     setCurrentContext(null);
     setInitialMemo("");
@@ -142,11 +160,10 @@ export function Kue({
     async (options: ReportIssueOptions = {}) => {
       if (phaseRef.current === "editing" || outboxVisible) return;
       if (overlayRef.current !== "none") return;
-      if (collectRef.current && groupRef.current?.draft.locked) {
-        setOverlay("group"); return;
-      }
+      // Tapping always captures; a draft that cannot take the finding makes it a lone report, and
+      // the finding screen opens that draft.
       if (openingRef.current) return openingRef.current;
-      captureGroupRef.current = collectRef.current ? groupRef.current : null;
+      captureGroupRef.current = groupRef.current;
 
       const requestId = ++captureRequestRef.current;
       const operation = (async () => {
@@ -267,6 +284,14 @@ export function Kue({
     return registerKueHost(registeredOpenReporter);
   }, [active, registeredOpenReporter]);
 
+  // Copies left by a terminated or reloaded session can never be reviewed or sent.
+  useEffect(() => { if (active) removeOrphanedGroupDrafts(); }, [active]);
+
+  // The types require submitLabel with a custom handler; untyped callers get the neutral fallback.
+  useEffect(() => {
+    if (active && missingLabel) console.warn("[KUE] Set submitLabel when using onSubmit or onSubmitGroup. Showing 「送信」 until then.");
+  }, [active, missingLabel]);
+
   useEffect(() => {
     if (active) return;
 
@@ -298,18 +323,26 @@ export function Kue({
         releaseOrDefer(report.screenshot.uri);
       }
       closeReporter();
+      if (reviewAfterCloseRef.current) {
+        reviewAfterCloseRef.current = false;
+        setOverlay("group");
+      }
     },
     [closeReporter, releaseOrDefer],
   );
 
   const handleSubmit = useCallback(
-    async (report: KueLocalReport) => {
-      const collecting = captureGroupRef.current;
-      if (collecting) {
-        if (collecting !== groupRef.current || (!collecting.onSubmitGroup && destination(collecting.cloud) !== destination(cloud))) {
-          throw new Error("接続先が変更されています。まとめの送信先は変更できません。");
+    async (report: KueLocalReport, action: FindingAction) => {
+      const collected = captureGroupRef.current;
+      const plan = planFindingAction(action, joinedFindings(collected?.draft));
+      if (plan !== "submit") {
+        const session = collected ?? { draft: createGroupDraft(), cloud: cloud ? { ...cloud } : undefined, onSubmitGroup };
+        if (collected !== groupRef.current || (!session.onSubmitGroup && destination(session.cloud) !== destination(cloud))) {
+          throw new Error("接続先が変更されています。追加した指摘の送信先は変更できません。");
         }
-        collecting.draft.add(report);
+        session.draft.add(report);
+        groupRef.current = session;
+        reviewAfterCloseRef.current = plan === "collect-and-review";
         changed();
         return;
       }
@@ -326,14 +359,12 @@ export function Kue({
     [cloud, onReceipt, onSubmit, onSubmitGroup, durable, onQueued],
   );
 
-  const captureAction = (collect: boolean) => {
-    if (collect && !groupRef.current) groupRef.current = { draft: createGroupDraft(), cloud: cloud ? { ...cloud } : undefined, onSubmitGroup };
-    collectRef.current = collect;
-    setOverlay("none"); changed();
-    void openReporter().catch(() => undefined);
+  const openSavedFindings = () => {
+    if (!groupRef.current || phaseRef.current !== "editing") return;
+    savedOpenRef.current = true; setSavedOpen(true); setOverlay("group");
   };
   const discardGroup = () => {
-    groupRef.current?.draft.discard(); groupRef.current = null; collectRef.current = false;
+    groupRef.current?.draft.discard(); groupRef.current = null;
     setOverlay("none"); changed();
   };
   const beginRecording = async () => {
@@ -341,13 +372,17 @@ export function Kue({
     if (recording === "off" || !cloud || (onSubmit && !onSubmitGroup)) {
       reportError(new Error("録画にはCloud接続とまとめの送信先が必要です。")); return;
     }
-    if (groupRef.current?.draft.locked || !validGroupDestination) { setOverlay("group"); return; }
+    if (groupRef.current?.draft.locked || groupRef.current?.draft.full || !validGroupDestination) { setOverlay("group"); return; }
+    // The radial menu has already closed when its action runs, while the list stays open until
+    // recording starts; either way, closing the list or another capture cancels the start.
+    const requested = overlayChangesRef.current;
     startingRecordingRef.current = true;
     try {
       const features = await getKueProjectFeatures(cloud);
       if (!features.recording.entitled) throw new Error("画面録画はIndieプランで利用できます。");
       if (!features.recording.available) throw new Error("現在、このCloudでは録画を利用できません。");
-      if (!mountedRef.current || !activeRef.current || overlayRef.current !== "actions" || currentRecordingConfig.current.recording === "off" ||
+      if (!mountedRef.current || !activeRef.current || overlayChangesRef.current !== requested || phaseRef.current !== "idle" ||
+        openingRef.current || currentRecordingConfig.current.recording === "off" ||
         destination(currentRecordingConfig.current.cloud) !== destination(cloud)) return;
       recordingSessionRef.current = { group: groupRef.current, cloud: { ...cloud }, onSubmitGroup, context: createReportContext(context) };
       setOverlay("recording");
@@ -361,7 +396,7 @@ export function Kue({
     }
     const nextGroup = session.group ?? { draft: createGroupDraft(), cloud: session.cloud, onSubmitGroup: session.onSubmitGroup };
     nextGroup.draft.add({ clientReportId: createClientReportId(), video, memo, context: session.context, capturedAt: video.capturedAt });
-    groupRef.current = nextGroup; collectRef.current = true;
+    groupRef.current = nextGroup;
     setOverlay("group"); changed();
   };
   const submitGroup = async (title: string) => {
@@ -375,14 +410,18 @@ export function Kue({
       try { void Promise.resolve(onReceipt?.(receipt)).catch(() => undefined); } catch { /* Accepted. */ }
     });
     if (mountedRef.current && groupRef.current === session) {
-      groupRef.current = null; collectRef.current = false; setOverlay("none"); changed();
+      groupRef.current = null; setOverlay("none"); changed();
     }
   };
 
-  const captureActions = useCaptureActions({ visible: active && (overlay === "radial" || overlay === "actions"), cloud, recording,
-    groupCount: group?.draft.findings.length ?? 0, hasGroup: !!group, canGroup: !!onSubmitGroup || (!!cloud && !onSubmit), outbox: durable,
-    onClose: () => setOverlay("none"), onCapture: () => captureAction(false), onCollect: () => captureAction(true), onRecord: () => void beginRecording(),
-    onReview: () => setOverlay("group"), onOutbox: () => { setOverlay("none"); setOutboxVisible(true); } });
+  // Groups need Cloud, or onSubmitGroup next to a custom onSubmit.
+  const groupable = !!onSubmitGroup || (!!cloud && !onSubmit);
+  // A recording joins a group and needs Cloud for the plan check; elsewhere the menu treats it as off.
+  const menuRecording = cloud && groupable ? recording : "off";
+  const captureActions = useCaptureActions({ visible: active && (overlay === "radial" || overlay === "actions"), cloud, recording: menuRecording,
+    groupCount: group?.draft.findings.length ?? 0, groupLabel, outbox: durable,
+    onClose: () => setOverlay("none"), onRecord: () => void beginRecording(),
+    onCreateIssue: () => setOverlay("group"), onOutbox: () => { setOverlay("none"); setOutboxVisible(true); } });
 
   if (!active) return null;
   const recordingTrigger = overlay === "recording" && recordingControl !== null;
@@ -394,10 +433,10 @@ export function Kue({
           recording={recordingTrigger} stopping={recordingTrigger && recordingControl.stopping}
           onPress={recordingTrigger ? recordingControl.stop : () => void openReporter().catch(() => undefined)}
           actions={captureActions} onMenuVisibilityChange={open => { if (open) setOverlay("radial"); else if (overlayRef.current === "radial") setOverlay("none"); }}
-          onLongPress={recordingTrigger ? undefined : () => setOverlay("actions")} />
+          onLongPress={recordingTrigger || captureActions.length === 0 ? undefined : () => setOverlay("actions")} />
       </TriggerSurface>
       <CaptureActions visible={overlay === "actions"} actions={captureActions} onClose={() => setOverlay("none")} />
-      <GroupReview draft={group?.draft ?? null} visible={overlay === "group"} validDestination={validGroupDestination}
+      <GroupReview draft={group?.draft ?? null} visible={overlay === "group"} validDestination={validGroupDestination} label={groupLabel} toCloud={groupToCloud}
         onClose={() => setOverlay("none")} onDiscard={discardGroup} onChanged={changed} onSubmit={submitGroup} />
       {overlay === "recording" ? <RecordingFlow onSave={saveRecording} onClose={() => setOverlay("none")} onControlChange={setRecordingControl} /> : null}
       {durable && cloud ? <OutboxView cloud={cloud} visible={outboxVisible} onClose={() => setOutboxVisible(false)} /> : null}
@@ -411,7 +450,13 @@ export function Kue({
         onSubmit={handleSubmit}
         onSubmitted={handleSubmitted}
         onSubmittingChange={handleSubmittingChange}
-        collecting={!!captureGroupRef.current}
+        collectedCount={joinedFindings(captureGroupRef.current?.draft)}
+        singleLabel={singleLabel}
+        groupLabel={groupLabel}
+        canCollect={groupable && draftAccepts(captureGroupRef.current?.draft)}
+        notice={groupable ? closedDraftNotice(captureGroupRef.current?.draft) : undefined}
+        onOpenSaved={groupable && !draftAccepts(captureGroupRef.current?.draft) ? openSavedFindings : undefined}
+        hidden={savedOpen}
       />
     </>
   );

@@ -5,23 +5,25 @@ import type { KueCloudConfig, KueProjectFeatures, KueRecordingMode } from "./typ
 import { recordingAvailability, recordingMessages } from "./recordingAvailability";
 import { nativeRecordingAvailable } from "./recording";
 import type { CaptureAction } from "./radialMenu";
+import { captureActionList } from "./captureActionList";
 
 interface CaptureActionsOptions {
-  visible: boolean; cloud?: KueCloudConfig; groupCount: number; hasGroup: boolean; canGroup: boolean; outbox: boolean;
+  visible: boolean; cloud?: KueCloudConfig; groupCount: number; groupLabel: string; outbox: boolean;
   recording?: KueRecordingMode;
-  onClose: () => void; onCapture: () => void; onCollect: () => void; onReview: () => void; onOutbox: () => void;
+  onClose: () => void; onCreateIssue: () => void; onOutbox: () => void;
   onRecord: () => void;
 }
 
-export function useCaptureActions({ visible, cloud, recording = "auto", groupCount, hasGroup, canGroup, outbox, onClose, onCapture, onCollect, onReview, onOutbox, onRecord }: CaptureActionsOptions): CaptureAction[] {
+export function useCaptureActions({ visible, cloud, recording = "auto", groupCount, groupLabel, outbox, onClose, onCreateIssue, onOutbox, onRecord }: CaptureActionsOptions): CaptureAction[] {
   const [features, setFeatures] = useState<KueProjectFeatures | null>(null);
   const [failure, setFailure] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // A known plan stays shown while it is checked again, so the menu does not change each time it opens.
+  useEffect(() => { setFeatures(null); setFailure(false); }, [cloud?.apiBaseUrl, cloud?.projectKey, recording]);
   useEffect(() => {
-    setFeatures(null); setFailure(false);
     if (!visible || !cloud || recording === "off") return;
     let cancelled = false;
-    void getKueProjectFeatures(cloud).then(value => { if (!cancelled) setFeatures(value); })
+    void getKueProjectFeatures(cloud).then(value => { if (!cancelled) { setFeatures(value); setFailure(false); } })
       .catch(() => { if (!cancelled) setFailure(true); });
     return () => { cancelled = true; };
   }, [visible, cloud?.apiBaseUrl, cloud?.projectKey, attempt, recording]);
@@ -34,7 +36,7 @@ export function useCaptureActions({ visible, cloud, recording = "auto", groupCou
       Alert.alert("画面録画", recordingMessages[availability]); return;
     }
     if (availability === "upgrade" && cloud) {
-      Alert.alert("Indieで画面録画を解放", "画面録画はIndieプランで利用できます。スクリーンショットとまとめ送信はFreeでも利用できます。", [
+      Alert.alert("Indieで画面録画を解放", "画面録画はIndieプランで利用できます。スクリーンショットと、複数の指摘をまとめたIssueの作成はFreeでも利用できます。", [
         { text: "閉じる", style: "cancel" },
         { text: "プランを確認", onPress: () => {
           const url = normalizeKueCloudConfig(cloud).endpoint.replace(/\/v1\/reports$/u, "/app");
@@ -43,14 +45,7 @@ export function useCaptureActions({ visible, cloud, recording = "auto", groupCou
       ]); return;
     }
   };
-  return [
-    { id: "screenshot", label: "スクリーンショット", symbol: "▣", onSelect: onCapture },
-    { id: "collect", label: hasGroup ? "指摘を追加" : "指摘をまとめる", symbol: "+", onSelect: onCollect, disabled: !canGroup },
-    ...(hasGroup ? [{ id: "review", label: `まとめを確認（${groupCount}件）`, symbol: "≡", onSelect: onReview }] : []),
-    { id: "recording", label: availability === "upgrade" ? "画面録画 · Indieで解放" : recording === "off" ? "画面録画（オフ）" : "画面録画",
-      symbol: "●", onSelect: record, locked: availability === "upgrade" },
-    ...(outbox ? [{ id: "outbox", label: "送信待ち", symbol: "↑", onSelect: onOutbox }] : []),
-  ];
+  return captureActionList({ groupCount, groupLabel, recording, availability, outbox, onCreateIssue, onRecord: record, onOutbox });
 }
 
 /** TalkBack/VoiceOver and tiny-window fallback. Touch users use the radial menu. */
@@ -60,7 +55,7 @@ export function CaptureActions({ visible, actions, onClose }: { visible: boolean
       <Text accessibilityRole="header" style={styles.heading}>KUE</Text>
       {actions.map(action => <Pressable key={action.id} accessibilityRole="button" accessibilityState={{ disabled: !!action.disabled }}
         disabled={action.disabled} onPress={action.onSelect} style={[styles.action, action.disabled && styles.disabled]} testID={`kue-menu-${action.id}`}>
-        <Text style={styles.text}>{action.label}{action.locked ? " 🔒" : ""}</Text>
+        <Text style={styles.text}>{action.label}</Text>
       </Pressable>)}
       <Pressable accessibilityRole="button" onPress={onClose} style={styles.action} testID="kue-menu-close"><Text style={styles.text}>閉じる</Text></Pressable>
     </View></View>

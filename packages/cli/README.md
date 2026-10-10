@@ -7,7 +7,7 @@ With Xcode 27 and Expo SDK 57, use `expo@57.0.23` or later and enable
 Documentation: [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs).
 
 ```sh
-npx kue-qa@0.3.6 init
+npx kue-qa@0.4.0 init
 ```
 
 Run from the Expo package or the monorepo workspace root. A single Expo app in
@@ -61,8 +61,8 @@ manager, or use the matching newer CLI. An unchanged `init` is a no-op; use
 `--reconnect` to refresh the connection explicitly. There is no
 automatic SDK update or runtime dependency on this CLI.
 
-These instructions target version `0.3.6`; confirm it is available on npm before
-installation. Pin setup with `npx kue-qa@0.3.6 init`; the CLI installs the SDK at its own
+These instructions target version `0.4.0`; confirm it is available on npm before
+installation. Pin setup with `npx kue-qa@0.4.0 init`; the CLI installs the SDK at its own
 exact version, never a beta tag. SDK/CLI installation does not purchase a Cloud
 subscription. The KUE workspace owner manages purchases and cancellation in the
 [dashboard](https://kue.ischca.dev/en/app); rerunning or removing the CLI does not
@@ -101,7 +101,7 @@ for idempotent setup.
 
 ## Build admission check
 
-Version 0.3.6 includes the following command.
+Since 0.3.6, the CLI includes the following command.
 
 `kue-qa check` reads the Expo app's managed `.kue/config.js` as data. `--app` selects
 an app; `--config project.json` reads dashboard JSON instead. `--env` reads the

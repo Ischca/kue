@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { normalizeKueCloudConfig, submitKueReport } from "./cloud";
+import { copyFileSync, moveFileSync } from "./fileSync";
 import { Outbox, type OutboxEntry, type OutboxStorage } from "./outboxCore";
 import type { KueCloudConfig, KueLocalReport, KueReceipt } from "./types";
 
@@ -19,7 +20,7 @@ function writeEntry(entry: OutboxEntry, initial = false): void {
   // The immutable report.json survives a killed state replacement (Expo 54–57).
   // Losing retry bookkeeping only causes a replay with the SAME idempotency key.
   if (marker.exists) marker.delete();
-  temp.move(marker);
+  moveFileSync(temp, marker);
 }
 const storage: OutboxStorage = {
   list() {
@@ -50,7 +51,7 @@ const storage: OutboxStorage = {
     const dir = directory(entry.report.clientReportId);
     dir.create({ intermediates: true, idempotent: true });
     const image = imageFile(entry);
-    new File(entry.report.screenshot.uri).copy(image);
+    copyFileSync(new File(entry.report.screenshot.uri), image);
     const saved = { ...entry, report: { ...entry.report, screenshot: { ...entry.report.screenshot, uri: image.uri } } };
     writeEntry(saved, true);
     return saved;

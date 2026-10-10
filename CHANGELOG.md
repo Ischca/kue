@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0 — 2026-10-10
+
+- Choose Add finding or Create Issue on the finding screen. Create Issue includes
+  saved findings and confirms the title first. The long-press menu creates an
+  Issue from saved findings without a new capture.
+- Fix missing images in grouped findings and the offline outbox on Expo SDK 56
+  and later.
+- Fix Screen recording not starting when chosen from the long-press menu.
+- Delete draft copies left behind when the app was terminated or reloaded.
+- Breaking: `KueProps` requires `cloud` or `onSubmit`, and `submitLabel` with a
+  custom `onSubmit` or `onSubmitGroup`. `KueProps` is now a type alias; use
+  `KueDestination` to choose a destination at runtime.
+- Show each long-press action's name beside its button, close to the trigger
+  and in its style, without the separate preview box and gesture hints.
+- The long-press menu no longer lists Screenshot, and hides Screen recording
+  when `recording` is `off` or recordings cannot be sent (no `cloud`, or
+  `onSubmit` without `onSubmitGroup`). A full or unconfirmed draft no longer blocks a
+  capture: the new finding is sent on its own, and Open saved findings on the
+  finding screen shows the draft without losing the new finding.
+
 ## 0.3.6 — 2026-10-09
 
 - Add grouped screenshot findings and a long-press actions menu. Keep drafts

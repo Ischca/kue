@@ -1,6 +1,6 @@
 {
   "name": "@kue-qa/react-native",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "description": "Capture visual issues while developing Expo and React Native apps.",
   "license": "MIT",
   "repository": {

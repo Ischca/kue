@@ -15,6 +15,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { createClientReportId } from "./clientReportId";
 import { CropEditor } from "./CropEditor";
 import { FULL_CROP, normalizeCrop } from "./crop";
+import { findingActionLabel, type FindingAction } from "./issueFlow";
 import { createCroppedScreenshot } from "./manipulate";
 import { OperationGeneration } from "./operationGeneration";
 import {
@@ -26,7 +27,6 @@ import type {
   KueCapturedImage,
   KueLocalReport,
   KueReportContext,
-  KueSubmitHandler,
   NormalizedCrop,
 } from "./types";
 
@@ -37,10 +37,23 @@ interface ReporterProps {
   onCancel: () => void;
   onError: (error: Error) => void;
   onRelease: (uri: string) => void;
-  onSubmit: KueSubmitHandler;
+  onSubmit: (report: KueLocalReport, action: FindingAction) => void | Promise<void>;
   onSubmitted: (report: KueLocalReport) => void;
   onSubmittingChange: (submitting: boolean) => void;
-  collecting?: boolean;
+  /** Findings already in the draft; the main action includes them. */
+  collectedCount?: number;
+  /** Main action without collected findings, e.g. 「Issueを作る」 or the app's submitLabel. */
+  singleLabel: string;
+  /** Main action when it includes collected findings; the count is appended. */
+  groupLabel: string;
+  /** Add finding needs a group destination (Cloud, or onSubmitGroup with a custom onSubmit). */
+  canCollect?: boolean;
+  /** Why this finding goes alone when the saved draft cannot take it. */
+  notice?: string;
+  /** Replaces Add finding while the draft cannot take this finding; the finding stays open. */
+  onOpenSaved?: () => void;
+  /** Hidden while the saved findings it opened are shown; memo and crop are kept. */
+  hidden?: boolean;
 }
 
 const asError = (value: unknown) =>
@@ -56,12 +69,19 @@ export function Reporter({
   onSubmit,
   onSubmitted,
   onSubmittingChange,
-  collecting = false,
+  collectedCount = 0,
+  singleLabel,
+  groupLabel,
+  canCollect = false,
+  notice,
+  onOpenSaved,
+  hidden = false,
 }: ReporterProps) {
   const [memo, setMemo] = useState(initialMemo);
   const [crop, setCrop] = useState<NormalizedCrop>({ ...FULL_CROP });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState<FindingAction | null>(null);
   const inputRef = useRef<TextInput>(null);
   const submittingRef = useRef(false);
   const operationGenerationRef = useRef(new OperationGeneration());
@@ -79,6 +99,7 @@ export function Reporter({
     setCrop({ ...FULL_CROP });
     setErrorMessage(null);
     setSubmitting(false);
+    setPendingAction(null);
     submittingRef.current = false;
 
     const sourceUri = capture.uri;
@@ -114,7 +135,7 @@ export function Reporter({
     setErrorMessage(null);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: FindingAction) => {
     if (!capture || !context || submittingRef.current) return;
     const operationGeneration = operationGenerationRef.current.current();
     if (operationGeneration === null) return;
@@ -124,6 +145,7 @@ export function Reporter({
     submittingRef.current = true;
     onSubmittingChange(true);
     setSubmitting(true);
+    setPendingAction(action);
     setErrorMessage(null);
 
     try {
@@ -145,7 +167,7 @@ export function Reporter({
       );
 
       if (!operationGenerationRef.current.isActive(operationGeneration)) return;
-      await onSubmit(report);
+      await onSubmit(report, action);
       if (!operationGenerationRef.current.isActive(operationGeneration)) return;
       const submittedReport = preparedReportRef.current.take();
       if (submittedReport) onSubmitted(submittedReport);
@@ -163,6 +185,7 @@ export function Reporter({
       if (operationGenerationRef.current.isActive(operationGeneration)) {
         submittingRef.current = false;
         setSubmitting(false);
+        setPendingAction(null);
       }
       onSubmittingChange(false);
     }
@@ -175,7 +198,7 @@ export function Reporter({
       onShow={() => requestAnimationFrame(() => inputRef.current?.focus())}
       presentationStyle="fullScreen"
       statusBarTranslucent
-      visible={Boolean(capture && context)}
+      visible={Boolean(capture && context) && !hidden}
     >
       <SafeAreaProvider style={styles.provider}>
         <SafeAreaView edges={["top", "right", "bottom", "left"]} style={styles.safeArea}>
@@ -193,7 +216,7 @@ export function Reporter({
                 style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
                 testID="kue-cancel"
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>キャンセル</Text>
               </Pressable>
               <Text accessibilityRole="header" style={styles.title}>
                 KUE
@@ -207,7 +230,7 @@ export function Reporter({
                 style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
                 testID="kue-reset-crop"
               >
-                <Text style={styles.resetText}>Reset crop</Text>
+                <Text style={styles.resetText}>範囲をリセット</Text>
               </Pressable>
             </View>
 
@@ -244,24 +267,62 @@ export function Reporter({
                 </Text>
               ) : null}
 
-              <Pressable
-                accessibilityLabel={collecting ? "指摘をまとめに追加" : "KUEを送信"}
-                accessibilityRole="button"
-                disabled={submitting || memo.trim().length === 0}
-                onPress={() => void handleSubmit()}
-                style={({ pressed }) => [
-                  styles.sendButton,
-                  (submitting || memo.trim().length === 0) && styles.sendButtonDisabled,
-                  pressed && styles.pressed,
-                ]}
-                testID="kue-send"
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.sendText}>{collecting ? "まとめに追加 ＋" : "Send →"}</Text>
-                )}
-              </Pressable>
+              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+
+              <View style={styles.actions}>
+                {onOpenSaved ? (
+                  <Pressable
+                    accessibilityHint="この指摘を残したまま、保存した指摘の確認画面を開きます"
+                    accessibilityLabel="保存した指摘を開く"
+                    accessibilityRole="button"
+                    disabled={submitting}
+                    onPress={onOpenSaved}
+                    style={({ pressed }) => [styles.addButton, submitting && styles.addButtonDisabled, pressed && styles.pressed]}
+                    testID="kue-open-saved"
+                  >
+                    <Text style={styles.addText}>保存した指摘を開く</Text>
+                  </Pressable>
+                ) : canCollect ? (
+                  <Pressable
+                    accessibilityHint="送信せずに端末へ保存し、あとでまとめて送ります"
+                    accessibilityLabel="指摘を追加"
+                    accessibilityRole="button"
+                    disabled={submitting || memo.trim().length === 0}
+                    onPress={() => void handleSubmit("add")}
+                    style={({ pressed }) => [
+                      styles.addButton,
+                      (submitting || memo.trim().length === 0) && styles.addButtonDisabled,
+                      pressed && styles.pressed,
+                    ]}
+                    testID="kue-add-finding"
+                  >
+                    {pendingAction === "add" ? (
+                      <ActivityIndicator color="#0F172A" />
+                    ) : (
+                      <Text style={styles.addText}>指摘を追加</Text>
+                    )}
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityHint={collectedCount > 0 ? "追加した指摘と合わせて、確認画面を開きます" : undefined}
+                  accessibilityLabel={findingActionLabel(singleLabel, groupLabel, collectedCount)}
+                  accessibilityRole="button"
+                  disabled={submitting || memo.trim().length === 0}
+                  onPress={() => void handleSubmit("issue")}
+                  style={({ pressed }) => [
+                    styles.sendButton,
+                    (submitting || memo.trim().length === 0) && styles.sendButtonDisabled,
+                    pressed && styles.pressed,
+                  ]}
+                  testID="kue-send"
+                >
+                  {pendingAction === "issue" ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.sendText}>{findingActionLabel(singleLabel, groupLabel, collectedCount)}</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -338,11 +399,45 @@ const styles = StyleSheet.create({
     color: "#B91C1C",
     fontSize: 13,
   },
+  notice: {
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "flex-end",
+  },
+  addButton: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    borderWidth: 1,
+    // Shrinks with the send button on narrow screens instead of overflowing the row.
+    flexShrink: 1,
+    justifyContent: "center",
+    minHeight: 48,
+    minWidth: 116,
+    paddingHorizontal: 20,
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
+  },
+  addText: {
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   sendButton: {
     alignItems: "center",
-    alignSelf: "flex-end",
     backgroundColor: "#0F172A",
     borderRadius: 12,
+    // An app-provided submitLabel can be long; wrap inside the row instead of overflowing.
+    flexShrink: 1,
     justifyContent: "center",
     minHeight: 48,
     minWidth: 116,
@@ -355,6 +450,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+    textAlign: "center",
   },
   pressed: {
     opacity: 0.65,

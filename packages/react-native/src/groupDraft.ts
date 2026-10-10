@@ -17,6 +17,8 @@ export class GroupDraft {
   constructor(private readonly storage: GroupDraftStorage) {}
   get findings(): readonly KueFinding[] { return clone(this.items.map(item => item.report)); }
   get locked(): boolean { return this.prepared !== null; }
+  /** A full draft takes no new finding until one is removed or the Issue is created. */
+  get full(): boolean { return this.items.length >= 10; }
   get submitting(): boolean { return this.running !== null; }
   private editable(): void {
     if (this.disposed) throw new Error("この下書きは閉じられています。");
@@ -25,12 +27,12 @@ export class GroupDraft {
   add(report: KueFinding): void {
     this.editable();
     if (this.items.some(item => item.report.clientReportId === report.clientReportId)) return;
-    if (this.items.length >= 10) throw new Error("まとめられる指摘は10件までです。");
+    if (this.full) throw new Error("1回に送れる指摘は10件までです。");
     const item = this.storage.copy(clone(report));
     if (!Number.isFinite(item.bytes) || item.bytes <= 0 || item.bytes > findingLimit(report) ||
       this.items.reduce((sum, value) => sum + value.bytes, item.bytes) > 20 * 1024 * 1024) {
       this.storage.release(item.report);
-      throw new Error("画像は1件10MiB、動画は1件20MiB、まとめて20MiBまでです。");
+      throw new Error("画像は1件10MiB、動画は1件20MiB、合計20MiBまでです。");
     }
     this.items.push(item);
   }

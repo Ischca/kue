@@ -8,7 +8,7 @@ import {
   moveTriggerGesture, revealTrigger, settleTriggerPosition, TRIGGER_SIZE,
   type TriggerBounds, type TriggerGesture, type TriggerPosition,
 } from "./triggerPosition";
-import { canOpenHeldMenu, layoutRadialMenu, MENU_BUTTON_SIZE, MENU_HOLD_MS, radialSelection, type CaptureAction, type Point, type RadialLayout } from "./radialMenu";
+import { canOpenHeldMenu, layoutRadialMenu, MENU_BUTTON_SIZE, MENU_HOLD_MS, MENU_LABEL_HEIGHT, radialSelection, type CaptureAction, type Point, type RadialLayout } from "./radialMenu";
 
 interface MenuSession { layout: RadialLayout; ids: string[] }
 
@@ -75,6 +75,24 @@ export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilit
     if (bounds) place(settled.current ? fitTriggerPosition(settled.current, bounds) : initialTriggerPosition(bounds));
   }, [bounds, visible, recording, place, closeMenu]);
 
+  // A name can change while the menu is open, for example once the plan check finishes. The layout
+  // follows so that a longer name is never clipped; the old one stays if the new names do not fit.
+  const names = actions.map(action => action.label).join("\n");
+  const ids = actions.map(action => action.id).join("\n");
+  useEffect(() => {
+    const session = menuRef.current;
+    if (!session || !bounds) return;
+    const layout = layoutRadialMenu(session.layout.origin, bounds, actions.map(action => action.label));
+    const sameIds = session.ids.join("\n") === ids;
+    if (!layout && !sameIds) {
+      if (gesture.current) gesture.current.cancelled = true;
+      closeMenu(); return;
+    }
+    const next = { layout: layout ?? session.layout, ids: actions.map(action => action.id) };
+    menuRef.current = next; setMenu(next);
+    if (!sameIds) setSelected(null);
+  }, [names, ids]);
+
   useEffect(() => {
     if (!menu) return;
     const listener = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -113,7 +131,7 @@ export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilit
           if (sequence.current !== pressSequence || !state.visible || !state.bounds || !current ||
             !canOpenHeldMenu(current, state.recording, 1)) return;
           const position = revealTrigger(current.start, state.bounds);
-          const layout = layoutRadialMenu({ x: position.x + TRIGGER_SIZE / 2, y: position.y + TRIGGER_SIZE / 2 }, state.bounds, state.actions.length);
+          const layout = layoutRadialMenu({ x: position.x + TRIGGER_SIZE / 2, y: position.y + TRIGGER_SIZE / 2 }, state.bounds, state.actions.map(action => action.label));
           setPressed(false);
           if (!layout) { current.cancelled = true; state.onLongPress?.(); return; }
           const session = { layout, ids: state.actions.map(action => action.id) };
@@ -189,29 +207,33 @@ export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilit
     >
       {menu ? <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill} testID="kue-radial-menu">
         <View style={[StyleSheet.absoluteFill, styles.menuShade]} />
+        {/* Every name stays visible beside its button, so the menu needs no instructions. */}
+        {menu.layout.labels.map((rect, index) => {
+          const action = actions.find(item => item.id === menu.ids[index]);
+          const button = menu.layout.items[index]!;
+          // The reserved width is a conservative estimate, so a side label hugs its button and sizes to its text.
+          const place = rect.x + rect.width <= button.x ? { right: (bounds?.width ?? 0) - rect.x - rect.width, maxWidth: rect.width }
+            : rect.x >= button.x ? { left: rect.x, maxWidth: rect.width } : { left: rect.x, width: rect.width };
+          return <View key={`label-${menu.ids[index]}`} style={[styles.menuLabel, place, { top: rect.y },
+            index === selected && styles.menuSelected, action?.disabled && styles.menuDisabled]} testID={`kue-radial-label-${menu.ids[index]}`}>
+            <Text style={styles.menuLabelText} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1}>{action?.label}</Text>
+          </View>;
+        })}
         {menu.layout.items.map((position, index) => {
           const action = actions.find(item => item.id === menu.ids[index]);
           const active = index === selected;
-          return <View key={menu.ids[index]} style={[styles.menuItem, { left: position.x - MENU_BUTTON_SIZE / 2, top: position.y - MENU_BUTTON_SIZE / 2 }, active && styles.menuItemSelected, action?.disabled && styles.menuItemDisabled]} testID={`kue-radial-${menu.ids[index]}`}>
-            <Text style={[styles.menuSymbol, active && styles.menuSymbolSelected]} maxFontSizeMultiplier={1}>{action?.symbol}</Text>
-            {action?.locked ? <Text style={styles.menuLock} maxFontSizeMultiplier={1}>🔒</Text> : null}
+          return <View key={menu.ids[index]} style={[styles.menuItem, { left: position.x - MENU_BUTTON_SIZE / 2, top: position.y - MENU_BUTTON_SIZE / 2 },
+            active && styles.menuSelected, action?.disabled && styles.menuDisabled]} testID={`kue-radial-${menu.ids[index]}`}>
+            <MenuIcon id={menu.ids[index]!} symbol={action?.symbol ?? ""} active={active} />
           </View>;
         })}
-        <View style={[styles.menuLabel, { left: menu.layout.label.x, top: menu.layout.label.y, width: menu.layout.label.width, height: menu.layout.label.height }]}>
-          <Text testID="kue-radial-label" style={styles.menuLabelText} maxFontSizeMultiplier={1.2} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
-            {selected === null ? "スライドして選択" : actions.find(item => item.id === menu.ids[selected])?.label}
-          </Text>
-          <Text style={styles.menuHint} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-            {selected === null ? "選択せず離すとキャンセル" : actions.find(item => item.id === menu.ids[selected])?.disabled ? "この設定では利用できません" : "指を離して決定"}
-          </Text>
-        </View>
       </View> : null}
       {bounds ? <Animated.View
         {...responder.panHandlers}
         accessible
         accessibilityRole="button"
         accessibilityLabel={recording ? (stopping ? "録画を停止中" : "録画を停止") : edge ? "KUEボタンを表示" : "KUEで画面をキャプチャ"}
-        accessibilityHint={recording ? "タップで録画を停止し、確認画面を表示。ドラッグで移動できます" : edge ? "タップで戻します。ドラッグでも移動できます" : `タップで撮影、ドラッグで移動。画面端で隠せます${onLongPress ? "。長押し中にメニューを表示。スライドで選択、離して決定。アクセシビリティ操作から一覧も表示できます" : ""}${count ? `。まとめに${count}件` : ""}`}
+        accessibilityHint={recording ? "タップで録画を停止し、確認画面を表示。ドラッグで移動できます" : edge ? "タップで戻します。ドラッグでも移動できます" : `タップで撮影、ドラッグで移動。画面端で隠せます${onLongPress ? "。長押し中にメニューを表示。スライドで選択、離して決定。アクセシビリティ操作から一覧も表示できます" : ""}${count ? `。追加した指摘${count}件` : ""}`}
         accessibilityState={{ disabled: stopping, busy: stopping }}
         accessibilityActions={[
           { name: "activate" },
@@ -260,20 +282,36 @@ export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilit
   );
 }
 
+/** Drawn like the trigger's viewfinder: white strokes on navy with a pink accent, not emoji or glyphs. */
+function MenuIcon({ id, symbol, active }: { id: string; symbol: string; active: boolean }) {
+  if (id === "issue") return <View style={styles.menuCheck} />;
+  if (id === "recording") return <View style={styles.menuRecord}><View style={[styles.menuDot, styles.menuRecordDot, active && styles.menuDotActive]} /></View>;
+  if (id === "outbox") return <View style={styles.menuUpload}><View style={styles.menuArrowHead} /><View style={styles.menuArrowStem} /></View>;
+  return <Text style={styles.menuSymbol} maxFontSizeMultiplier={1}>{symbol}</Text>;
+}
+
+const raised = { elevation: 6, shadowColor: "#020617", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 6 } as const;
+
 const styles = StyleSheet.create({
   surface: { position: "absolute", overflow: "hidden" },
   invisible: { opacity: 0 },
   menuShade: { backgroundColor: "rgba(15,23,42,0.22)" },
   menuItem: { position: "absolute", width: MENU_BUTTON_SIZE, height: MENU_BUTTON_SIZE, borderRadius: MENU_BUTTON_SIZE / 2,
-    backgroundColor: "#FFFFFF", borderColor: "#475569", borderWidth: 1, alignItems: "center", justifyContent: "center", elevation: 8 },
-  menuItemSelected: { backgroundColor: "#DB2777", borderColor: "#FFFFFF", borderWidth: 3 },
-  menuItemDisabled: { opacity: 0.45 },
-  menuSymbol: { color: "#151B33", fontSize: 26, lineHeight: 30, fontWeight: "700" },
-  menuSymbolSelected: { color: "#FFFFFF" },
-  menuLock: { position: "absolute", right: -1, bottom: -1, fontSize: 12, backgroundColor: "#FFFFFF", borderRadius: 8 },
-  menuLabel: { position: "absolute", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: "#151B33", justifyContent: "center" },
-  menuLabelText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16, lineHeight: 22, textAlign: "center" },
-  menuHint: { color: "#CBD5E1", fontSize: 12, lineHeight: 16, marginTop: 6, textAlign: "center" },
+    backgroundColor: "#151B33", borderColor: "rgba(255, 255, 255, 0.16)", borderWidth: 1, alignItems: "center", justifyContent: "center", ...raised },
+  menuSelected: { backgroundColor: "#DB2777", borderColor: "#FFFFFF" },
+  menuDisabled: { opacity: 0.45 },
+  menuLabel: { position: "absolute", height: MENU_LABEL_HEIGHT, borderRadius: MENU_LABEL_HEIGHT / 2, paddingHorizontal: 12,
+    backgroundColor: "#151B33", borderColor: "rgba(255, 255, 255, 0.16)", borderWidth: 1, alignItems: "center", justifyContent: "center", ...raised },
+  menuLabelText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
+  menuSymbol: { color: "#FFFFFF", fontSize: 20, lineHeight: 24, fontWeight: "700" },
+  menuDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#FF5B98" },
+  menuDotActive: { backgroundColor: "#FFFFFF" },
+  menuCheck: { width: 9, height: 16, marginTop: -4, borderColor: "#FFFFFF", borderRightWidth: 2.5, borderBottomWidth: 2.5, transform: [{ rotate: "45deg" }] },
+  menuRecord: { width: 20, height: 20, borderRadius: 10, borderWidth: 2.5, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  menuRecordDot: { width: 8, height: 8, borderRadius: 4 },
+  menuUpload: { width: 20, height: 20, alignItems: "center" },
+  menuArrowHead: { width: 10, height: 10, marginTop: 4, borderColor: "#FFFFFF", borderLeftWidth: 2.5, borderTopWidth: 2.5, transform: [{ rotate: "45deg" }] },
+  menuArrowStem: { width: 2.5, height: 13, marginTop: -9, backgroundColor: "#FFFFFF" },
   trigger: {
     position: "absolute", left: 0, top: 0, width: TRIGGER_SIZE, height: TRIGGER_SIZE,
     alignItems: "center", justifyContent: "center", backgroundColor: "#151B33",

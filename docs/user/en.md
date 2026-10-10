@@ -2,7 +2,7 @@
 
 KUE adds screen capture, cropping, and memo entry to Expo / React Native apps. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Target version: SDK and CLI **0.3.6**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
+Target version: SDK and CLI **0.4.0**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
@@ -108,7 +108,7 @@ The CLI does not store GitHub user tokens or billing credentials in the applicat
 
 ### Setup for manually mounted components
 
-In CLI 0.3.6, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
+In CLI 0.4.0, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
 
 ```sh
 kue-qa init --skip-integration
@@ -123,10 +123,10 @@ After a newer CLI updates the SDK, review the diff and use the application's exi
 
 ### Dependencies
 
-Install SDK 0.3.6 with the application's existing package manager and maintain one lockfile format.
+Install SDK 0.4.0 with the application's existing package manager and maintain one lockfile format.
 
 ```sh
-npm install @kue-qa/react-native@0.3.6
+npm install @kue-qa/react-native@0.4.0
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
 ```
 
@@ -162,15 +162,20 @@ Replace `Stack` with `Slot` when required by the router configuration. Without E
 
 ### Custom storage
 
-`onSubmit` receives a `KueLocalReport` and returns `void` or `Promise<void>`. In the example, `saveReportAndCopyImage` is a storage function implemented by the application.
+`onSubmit` receives a `KueLocalReport` and returns `void` or `Promise<void>`. In the example, `saveReportAndCopyImage` is a storage function implemented by the application. `submitLabel` names the action on the submit button.
 
 ```tsx
-<Kue onSubmit={async (report) => {
-  await saveReportAndCopyImage(report);
-}} />
+<Kue
+  onSubmit={async (report) => {
+    await saveReportAndCopyImage(report);
+  }}
+  submitLabel="Save report"
+/>
 ```
 
-When both `onSubmit` and `cloud` are configured, `onSubmit` takes precedence. Cloud submission and the offline queue are bypassed. With neither configured, reports are not saved automatically.
+Configure either `cloud` or `onSubmit`; omitting both is a type error. When both are configured, `onSubmit` takes precedence. Cloud submission and the offline queue are bypassed. To choose a destination at runtime, select one `KueDestination` value and spread it into `Kue`.
+
+With `onSubmit` or `onSubmitGroup`, `submitLabel` is required; omitting it is a type error. The finding screen, the long-press menu and the confirmation screen use this text, and the SDK appends the count (N). With `cloud` only, the button reads Create Issue and `submitLabel` is not accepted. With `cloud` and `onSubmitGroup`, a submission without saved findings goes to Cloud and reads Create Issue. If `submitLabel` is omitted without type checking, the button reads Send and a warning is logged once.
 
 The image URI references a temporary file. Copy or upload the image before the callback's Promise resolves if it must remain available afterward.
 
@@ -188,9 +193,17 @@ The image URI references a temporary file. Copy or upload the image before the c
 
 ### Procedure
 
-1. Tap the KUE button to start a capture.
-2. Select the relevant area and enter a memo.
-3. Check that the report contains no secrets or personal information, then select Send.
+The screenshots show the SDK's Japanese interface; this guide translates its labels.
+
+1. Tap the KUE button.
+
+   ![App screen with the KUE button in the lower-right corner](images/kue-button.webp)
+
+2. Drag the corners of the frame to select an area, then enter a memo.
+
+   ![Finding screen with the crop frame, the memo field, and the Add finding and Create Issue buttons](images/finding-screen.webp)
+
+3. Check that the report contains no secrets or personal information, then select Create Issue. To send it together with other findings, select Add finding instead; see Grouped findings.
 4. For Cloud submissions, check delivery status and the created Issue in the dashboard.
 
 ### Floating button
@@ -207,7 +220,7 @@ The default is a viewfinder button. Set `buttonDesign="mascot"` to display the c
 | Drag | Move the button without capturing |
 | Release at a screen edge | Dock the button as a small handle |
 | Tap the handle | Restore the button |
-| Hold for about 0.5 seconds and release over an item | Select an action from the fan menu; pending reports appear there when the offline queue is enabled |
+| Hold for about 0.5 seconds and release over an item | Select an action from the menu; without menu items, a hold starts a capture like a tap |
 
 Position is not retained across application restarts.
 
@@ -217,27 +230,48 @@ Issues contain the cropped image, memo, and device/application metadata. The def
 
 ### Grouped findings
 
-SDK 0.3.6 and production Cloud can submit multiple images or videos in one Issue.
+Multiple images or videos can be submitted in one Issue. Production Cloud supports grouped submissions.
 
-1. Hold the KUE button for approximately 0.5 seconds. A fan-shaped menu opens while the finger remains down. Slide to preview the Collect findings label, then release over that item to select it.
-2. Select an image area, enter a memo, and select Add to group. Nothing is uploaded yet.
-3. Continue using the application and tap KUE to add another finding. The button displays the count.
-4. Select Review group from the long-press menu to inspect images and memos and remove unwanted findings.
-5. Enter an Issue title and select Send as one Issue.
+1. On the first finding, select Add finding. The finding is saved to the on-device draft without being sent. The KUE button displays the number of saved findings.
+2. Continue using the application and tap KUE to record the next finding.
+3. On the last finding, select Create Issue (N). N is the number of saved findings plus the current one. The confirmation screen opens after the finding screen closes.
+4. Review the images and memos and remove unwanted findings. The title defaults to the first line of the first finding's memo. Edit the title if needed, then select Create Issue (N).
 
-The menu fans out from the KUE button in a direction that fits within the screen and safe area. Release at the button center or away from menu items to cancel. Moving before the menu opens drags the button as before. Rotation, backgrounding and multitouch cancel selection. TalkBack/VoiceOver users can choose from a list through the Show actions menu accessibility action. Exceptionally small host surfaces also use the list.
+   ![Confirmation screen with the title field and two findings](images/confirmation-screen.webp)
+
+Without saved findings, Create Issue sends only the current finding and does not open the confirmation screen. Add finding appears when `cloud` is set without `onSubmit`, or when `onSubmitGroup` is set.
+
+To create an Issue from saved findings only, hold the KUE button for about 0.5 seconds and release over Create Issue (N) in the menu that opens. The confirmation screen opens without a new capture. This item appears only while findings are saved.
+
+![Long-press menu with Create Issue (1) selected](images/long-press-menu.webp)
+
+The long-press menu shows only actions that a tap cannot perform.
+
+| Item | Shown when |
+| --- | --- |
+| Create Issue (N) | Findings are saved |
+| Screen recording | `cloud` is set and `recording` is not `off`; with `onSubmit`, `onSubmitGroup` is also required. On Free, the item is locked and explains Indie access when selected |
+| Pending reports | The offline queue is enabled |
+
+The items appear next to the KUE button, each named beside its button. Names are placed where the screen edge and other items cannot cover them; when they do not fit, the menu opens as a list. Release over a button or its name to choose that action; release over the KUE button or away from the items to cancel. Moving before the menu opens drags the button. Rotation, backgrounding and multitouch cancel selection. TalkBack/VoiceOver users can choose from a list through the Show actions menu accessibility action. Without menu items, a hold starts a capture like a tap.
+
+With 10 saved findings, or while the send result of the saved findings is unconfirmed, a KUE tap, a trigger and `reportIssue()` still start a capture. The current finding cannot join the draft, so the finding screen shows Open saved findings instead of Add finding, with the reason. Create Issue sends only the current finding.
+
+Open saved findings opens the confirmation screen and keeps the current finding. Sending, resending or discarding the saved findings there, or selecting Back, returns to the finding screen. The crop and memo are kept. If the current finding can then join the draft, Add finding is shown.
+
+While the draft cannot take a finding, selecting Screen recording from the long-press menu opens the confirmation screen without recording.
 
 Free and Indie allow 1–10 findings, up to 10 MiB per image and 20 MiB in total. Usage counts findings, not Issues: a group of three consumes three captures. Acceptance is atomic; a quota or storage failure cannot accept only part of the group.
 
-Drafts last for the application session; images are copied to SDK-owned temporary storage. Drafts are not restored after application termination, moved into the offline outbox, or sent automatically. Changing the project key or server never moves an existing draft to another destination.
+Drafts last for the application session; images are copied to SDK-owned temporary storage. Drafts are not restored after application termination, moved into the offline outbox, or sent automatically. Changing the project key or server never moves an existing draft to another destination. Draft copies left behind by an application termination or reload are deleted the next time the application starts with KUE enabled.
 
-After the first submission attempt, content is frozen and retries reuse the same identifier and payload. An uncertain receipt does not trigger a new identifier. Discarding the local draft does not cancel an Issue already accepted by Cloud. To return to individual submissions, select Screenshot from the long-press menu.
+After the first submission attempt, content is frozen and retries reuse the same identifier and payload. An uncertain receipt does not trigger a new identifier. Discarding the local draft does not cancel an Issue already accepted by Cloud.
 
-Screen recording remains visible on Free as a locked menu item that explains Indie access. A failed plan check is distinct from Free.
+If the plan check fails before any plan is confirmed, Screen recording is not shown with the Free lock; selecting it asks the tester to check the connection and retry. Once a plan is confirmed, a failed re-check keeps showing that plan.
 
 ### Screen recording
 
-A recording-capable native build and active Indie entitlement are required. Production Cloud supports video admission.
+A recording-capable native build, `cloud` and active Indie entitlement are required; with `onSubmit`, `onSubmitGroup` is also required. Production Cloud supports video admission.
 
 1. Select Screen recording from the KUE long-press menu and review the OS recording consent prompt.
 2. During recording, the KUE button becomes a red-square stop control at the same position. Tap it to stop. It remains draggable, but edge hiding and the long-press menu are disabled. Android also allows stopping from the recording notification.
@@ -252,7 +286,7 @@ The Issue contains a link to open the video. Anyone with its URL can view it; do
 
 ### Recording build configuration
 
-CLI 0.3.6 manages native recorder inclusion.
+CLI 0.4.0 manages native recorder inclusion.
 
 Set `kue.recording` in the selected application's `package.json`. The default is `auto`. `init` checks the connected workspace entitlement and configures the native recorder for exclusion on Free or inclusion on Indie. `off` excludes it regardless of plan. Screenshot dependencies are not excluded.
 
@@ -277,7 +311,7 @@ Updating configuration does not change an installed application. When a recordin
 Before distributing a build, check whether the selected app can currently submit using its managed configuration.
 
 ```sh
-npx kue-qa@0.3.6 check
+npx kue-qa@0.4.0 check
 ```
 
 Use `--app` to select the app. Alternatively, `--config project.json` reads dashboard JSON, or `--env` reads the already-resolved build variables `EXPO_PUBLIC_KUE_MODE`, `EXPO_PUBLIC_KUE_API_BASE_URL`, `EXPO_PUBLIC_KUE_PROJECT_KEY`, and optional `EXPO_PUBLIC_KUE_ENABLED`. These three configuration sources are mutually exclusive. Never put a key in a command argument. `--env` does not load dotenv; resolve the values used by Expo/EAS before invoking it.
@@ -290,10 +324,10 @@ With managed configuration, it also compares recorder inclusion with the current
 
 | API | Input, result and limitations |
 | --- | --- |
-| `onSubmitGroup` | Custom handler receiving a `KueReportGroup`. It does not call `onSubmit` once per finding. Copy or upload required images/videos before resolving |
+| `onSubmitGroup` | Custom handler receiving a `KueReportGroup`. It does not call `onSubmit` once per finding. Copy or upload required images/videos before resolving. Requires `submitLabel` |
 | `submitKueReportGroup(group, cloud)` | Submits `clientReportId`, `title` and ordered `findings` together and returns one `KueReceipt`. Never falls back to individual uploads on an unsupported server |
 | `getKueProjectFeatures(cloud)` | Returns group support and recording entitlement/availability. Authentication and network failures throw. A client-supplied plan is not accepted |
-| `KueProps.recording` | `"auto" \| "off"`, default `auto`. `off` disables recording at runtime. Native exclusion is managed by CLI build configuration; this prop alone does not remove code from the binary |
+| `KueProps.recording` | `"auto" \| "off"`, default `auto`. `off` disables recording at runtime and hides Screen recording from the long-press menu. Native exclusion is managed by CLI build configuration; this prop alone does not remove code from the binary |
 
 `KueReportGroup.findings` is an array of `KueFinding` (`KueLocalReport | KueVideoReport`). `KueVideoReport` contains `clientReportId`, `memo`, `context`, `capturedAt` and `video`. The `video` contains `uri`, `width`, `height`, `durationMs`, `byteSize`, `mimeType: "video/mp4"` and `capturedAt`. Media URIs must remain valid until submission finishes. When using a custom `onSubmit`, provide `onSubmitGroup` separately to enable grouped submissions. Each draft retains the handler supplied at creation; a rerender supplying another function does not retarget the existing draft.
 
@@ -301,13 +335,15 @@ With managed configuration, it also compares recorder inclusion with the current
 
 ### KueProps
 
-All props are optional. Submission or storage requires either `cloud` or `onSubmit`.
+Configure either `cloud` or `onSubmit`. Other props are optional.
 
 | Prop | Default | Behavior |
 | --- | --- | --- |
 | `enabled` | `__DEV__` | Enable or disable the SDK. Disabled by default in release builds |
-| `cloud` | Not set | Configure Cloud submission with `KueCloudConfig` |
-| `onSubmit` | Not set | Custom storage callback. Takes precedence over `cloud` |
+| `cloud` | Not set | Configure Cloud submission with `KueCloudConfig`. Required unless `onSubmit` is set |
+| `onSubmit` | Not set | Custom storage callback. Takes precedence over `cloud`; requires `submitLabel` |
+| `onSubmitGroup` | Not set | Custom handler for grouped findings; requires `submitLabel` |
+| `submitLabel` | Not set | Action name on the submit buttons of a custom handler. Required with `onSubmit` or `onSubmitGroup`; not accepted with `cloud` only |
 | `context` | `{}` | Add to or override automatically collected metadata |
 | `floatingButton` | `true` | Show the button. Other triggers remain available when `false` |
 | `buttonDesign` | `"classic"` | `"classic"` uses the viewfinder button; `"mascot"` uses the character |
@@ -548,19 +584,21 @@ Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privac
 
 ### SDK upgrades
 
-The following commands upgrade to published version 0.3.6. For another release, verify the published version and release notes before replacing the version number.
+The following commands upgrade to published version 0.4.0. For another release, verify the published version and release notes before replacing the version number.
 
 ```sh
-npm install @kue-qa/react-native@0.3.6
+npm install @kue-qa/react-native@0.4.0
 ```
 
 To upgrade the SDK with the CLI, specify the target version. Existing connection configuration is reused. Add `--reconnect` only when retrieving configuration again.
 
 ```sh
-npx kue-qa@0.3.6 init
+npx kue-qa@0.4.0 init
 ```
 
 The CLI uses the SDK at its own version. CLI 0.3.4 and later refuse implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
+
+When upgrading from 0.3.x to 0.4.0, `Kue` requires `cloud` or `onSubmit`; omitting both is a type error. With `onSubmit` or `onSubmitGroup`, also set `submitLabel`. Applications integrated by the CLI already pass `cloud` and need no change. Replace `interface … extends KueProps` with a type alias such as `type Props = KueProps & { … }`.
 
 Rebuild the development client after changing native dependencies and verify capture and submission on a physical device. Manage dependency versions through the application's lockfile.
 
@@ -580,7 +618,7 @@ Verify the Cloud URL and project key in the build environment that embeds them i
 
 After rotating a key or recreating a project, update each build environment, rebuild the app, and distribute the new build. Do not substitute a key belonging to a different repository. Existing queued entries are not automatically migrated to the new key.
 
-Completing CLI 0.3.6 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
+Completing CLI 0.4.0 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
 
 ### Symptoms and checks
 

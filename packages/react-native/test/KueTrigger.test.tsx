@@ -46,13 +46,19 @@ vi.mock("react-native", () => ({
 vi.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 0 }) }));
 
 import { KueTrigger } from "../src/KueTrigger";
-import { layoutRadialMenu, MENU_HOLD_MS, type CaptureAction } from "../src/radialMenu";
+import { layoutRadialMenu, MENU_HOLD_MS, menuLabelWidth, type CaptureAction } from "../src/radialMenu";
 
 function find(node: any, testID: string): any {
   if (!node || typeof node !== "object") return undefined;
   if (node.props?.testID === testID) return node;
   return [node.props?.children].flat(Infinity).map(child => find(child, testID)).find(Boolean);
 }
+function texts(node: any): string[] {
+  if (typeof node === "string") return [node];
+  if (!node || typeof node !== "object") return [];
+  return [node.props?.children].flat(Infinity).flatMap(texts);
+}
+const pink = (node: any) => [node?.props.style].flat(Infinity).some((style: any) => style?.backgroundColor === "#DB2777");
 function mount(overrides: Partial<Parameters<typeof KueTrigger>[0]> = {}) {
   const actions: CaptureAction[] = ["capture", "collect", "record"].map(id => ({ id, label: id, symbol: "+", onSelect: vi.fn() }));
   let props = { visible: true, onPress: vi.fn(), onLongPress: vi.fn(), onMenuVisibilityChange: vi.fn(), actions, ...overrides };
@@ -84,15 +90,61 @@ describe("floating menu gesture wiring", () => {
   it("opens while held, previews the slid-to action, and executes only on release", () => {
     const ui = mount(); ui.start(); ui.hold();
     expect(ui.node("kue-radial-menu")).toBeDefined();
-    const layout = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, 3)!;
+    const layout = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", "record"])!;
     const point = layout.items[1]!;
+    // Every action is named beside its button from the start, with no instruction text.
+    expect(texts(ui.node("kue-radial-menu"))).toEqual(["capture", "collect", "record"]);
     ui.move(point.x - 347, point.y - 701);
-    expect(ui.node("kue-radial-label").props.children).toBe("collect");
+    expect(pink(ui.node("kue-radial-collect"))).toBe(true);
+    expect(pink(ui.node("kue-radial-label-collect"))).toBe(true);
+    expect(pink(ui.node("kue-radial-capture")) || pink(ui.node("kue-radial-label-capture"))).toBe(false);
     expect(ui.actions[1]!.onSelect).not.toHaveBeenCalled();
     ui.end(point.x - 347, point.y - 701);
     expect(ui.actions[1]!.onSelect).toHaveBeenCalledOnce();
     expect(ui.props.onPress).not.toHaveBeenCalled();
     expect(ui.node("kue-radial-menu")).toBeUndefined();
+  });
+
+  it("closes the menu before running the chosen action, which Kue relies on to start recording", () => {
+    const order: string[] = [];
+    const ui = mount({ onMenuVisibilityChange: vi.fn((open: boolean) => { order.push(open ? "open" : "close"); }) });
+    ui.actions[2]!.onSelect = vi.fn(() => { order.push("select"); });
+    ui.start(); ui.hold();
+    const point = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", "record"])!.items[2]!;
+    ui.end(point.x - 347, point.y - 701);
+    expect(order).toEqual(["open", "close", "select"]);
+  });
+
+  it("selects an action by releasing over its name", () => {
+    const ui = mount(); ui.start(); ui.hold();
+    const label = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", "record"])!.labels[2]!;
+    ui.end(label.x + label.width / 2 - 347, label.y + label.height / 2 - 701);
+    expect(ui.actions[2]!.onSelect).toHaveBeenCalledOnce();
+    expect(ui.props.onPress).not.toHaveBeenCalled();
+  });
+
+  it("places a name again when it changes while the menu is open, keeping the buttons in place", () => {
+    const ui = mount(); ui.start(); ui.hold();
+    const flat = (node: any) => Object.assign({}, ...[node.props.style].flat(Infinity).filter(Boolean));
+    const buttons = () => ["capture", "collect", "record"].map(id => flat(ui.node(`kue-radial-${id}`)));
+    const before = buttons();
+    // The recording name grows once the plan check reports Free.
+    const longer = "画面録画 · Indieで解放";
+    ui.update({ actions: ui.actions.map(action => action.id === "record" ? { ...action, label: longer } : action) });
+    expect(texts(ui.node("kue-radial-label-record"))).toEqual([longer]);
+    expect(flat(ui.node("kue-radial-label-record")).maxWidth).toBe(menuLabelWidth(longer));
+    expect(buttons()).toEqual(before);
+    const label = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", longer])!.labels[2]!;
+    ui.end(label.x + 4 - 347, label.y + label.height / 2 - 701);
+    expect(ui.actions[2]!.onSelect).toHaveBeenCalledOnce();
+  });
+
+  it("cancels the menu when its actions change and no longer fit", () => {
+    const ui = mount(); ui.start(); ui.hold();
+    ui.update({ actions: Array.from({ length: 6 }, (_, index) => ({ id: `extra-${index}`, label: "extra", symbol: "+", onSelect: vi.fn() })) });
+    expect(ui.node("kue-radial-menu")).toBeUndefined();
+    ui.end();
+    expect(ui.props.onPress).not.toHaveBeenCalled();
   });
 
   it("retains short tap capture and cancels a hold released at the center", () => {
@@ -109,7 +161,7 @@ describe("floating menu gesture wiring", () => {
 
   it("can slide back to cancel and never captures when the hold timer is delayed", () => {
     const ui = mount(); ui.start(); ui.hold();
-    const p = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, 3)!.items[1]!;
+    const p = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", "record"])!.items[1]!;
     ui.move(p.x - 347, p.y - 701); ui.move(0, 0); ui.end();
     expect(ui.actions[1]!.onSelect).not.toHaveBeenCalled();
     ui.start(); vi.setSystemTime(Date.now() + MENU_HOLD_MS + 100); ui.end();
@@ -130,7 +182,7 @@ describe("floating menu gesture wiring", () => {
   it("does not select disabled actions but allows a locked action to explain an upgrade", () => {
     const ui = mount();
     ui.actions[1]!.disabled = true; ui.actions[2]!.locked = true;
-    const layout = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, 3)!;
+    const layout = layoutRadialMenu({ x: 347, y: 701 }, { width: 390, height: 740 }, ["capture", "collect", "record"])!;
     for (const index of [1, 2]) { ui.start(); ui.hold(); const p = layout.items[index]!; ui.end(p.x - 347, p.y - 701); }
     expect(ui.actions[1]!.onSelect).not.toHaveBeenCalled(); expect(ui.actions[2]!.onSelect).toHaveBeenCalledOnce();
   });

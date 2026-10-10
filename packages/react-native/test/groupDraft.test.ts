@@ -40,8 +40,10 @@ describe("group draft ownership and idempotence", () => {
   });
   it("rejects count/byte limits and releases only rejected copies", () => {
     const { draft } = setup(); for (let i = 0; i < 10; i++) draft.add(finding(String(i)));
+    expect(draft.full).toBe(true);
     expect(() => draft.add(finding("0"))).not.toThrow();
     expect(() => draft.add(finding("11"))).toThrow("10件");
+    draft.remove(finding("0").clientReportId); expect(draft.full).toBe(false);
     const large = setup(10 * 1024 * 1024); large.draft.add(finding()); large.draft.add(finding("two"));
     expect(() => large.draft.add(finding("three"))).toThrow("20MiB");
     expect(large.draft.findings).toHaveLength(2); expect(large.storage.release).toHaveBeenCalledTimes(1);
