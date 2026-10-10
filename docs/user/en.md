@@ -17,7 +17,7 @@ When building an Expo SDK 57 app with Xcode 27 (the iOS 27 SDK), use `expo@57.0.
 
 Cloud integration requires a GitHub account and installation of the KUE QA GitHub App on the destination repository. The connecting user must own the personal repository or be an organization owner, and must also have administrator permission on the repository. Contact [support](mailto:kue@ischca.dev) if the App cannot be installed.
 
-Custom storage through `onSubmit` does not require a Cloud account. Standard SDK installation and upgrades do not require yalc.
+Custom storage through `onSubmit` does not require a Cloud account.
 
 ## CLI setup
 
@@ -57,9 +57,7 @@ The initial action is bound to the browser, signed-in account, and destination, 
 
 ### Idempotent init
 
-The following behavior applies to CLI 0.3.4 and later. Version 0.3.3 and earlier repeat connection approval, dependency installation, and configuration writes on subsequent runs.
-
-Ordinary `init` exits without browser approval, package-manager execution, or file writes when the managed connection, integration, and installed dependencies are unchanged. File modification times and the lockfile are preserved. With `recording: auto`, it still reads the current Cloud plan; `off` skips that read. Existing 0.3.3 configuration files are supported. Local-state and plan checks do not guarantee that submission is available.
+Ordinary `init` exits without browser approval, package-manager execution, or file writes when the managed connection, integration, and installed dependencies are unchanged. File modification times and the lockfile are preserved. With `recording: auto`, it still reads the current Cloud plan; `off` skips that read. Local-state and plan checks do not guarantee that submission is available.
 
 | State or option | Behavior |
 | --- | --- |
@@ -347,7 +345,7 @@ With managed configuration, it also compares recorder inclusion with the current
 
 ### KueProps
 
-Configure either `cloud` or `onSubmit`. Other props are optional.
+Configure either `cloud` or `onSubmit`. Other props are optional. `KueProps` is a type alias; extend it with an intersection such as `type Props = KueProps & { … }`.
 
 | Prop | Default | Behavior |
 | --- | --- | --- |
@@ -609,11 +607,7 @@ To upgrade the SDK with the CLI, specify the target version. Existing connection
 npx kue-qa@0.5.0 init
 ```
 
-The CLI uses the SDK at its own version. CLI 0.3.4 and later refuse implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
-
-After upgrading from 0.4.x to 0.5.0, devices that do not prefer Japanese over English show the KUE screens in English. To keep Japanese on every device, set `locale="ja"`.
-
-When upgrading from 0.3.x, `Kue` requires `cloud` or `onSubmit`; omitting both is a type error. With `onSubmit` or `onSubmitGroup`, also set `submitLabel`. Applications integrated by the CLI already pass `cloud` and need no change. Replace `interface … extends KueProps` with a type alias such as `type Props = KueProps & { … }`.
+The CLI uses the SDK at its own version. It refuses implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
 
 Rebuild the development client after changing native dependencies and verify capture and submission on a physical device. Manage dependency versions through the application's lockfile.
 

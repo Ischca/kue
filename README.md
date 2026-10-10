@@ -7,9 +7,8 @@ This repository contains the MIT-licensed SDK and setup CLI only. KUE Cloud is a
 separately operated service; its server code, configuration and credentials are
 not part of this repository.
 
-Version 0.5.0 shows the KUE screens in Japanese or English, following the
-device's preferred languages; `locale` fixes the display language. After
-upgrading from 0.4.x, devices that do not prefer Japanese over English show English.
+KUE shows its screens in Japanese or English, following the device's preferred
+languages; `locale` fixes the display language.
 
 The finding screen offers Add finding and Create Issue. Create Issue sends the
 current finding, or confirms a title for it together with the saved findings. A
@@ -90,8 +89,6 @@ documentation for the complete policy.
 
 ## Install
 
-Installation needs neither a beta tag nor a server flag:
-
 ```sh
 # From the Expo app or workspace root, once your repository has access to the GitHub App:
 npx kue-qa init
@@ -102,19 +99,18 @@ local development.
 One Expo app in the workspace is selected automatically. With multiple apps,
 use `npx kue-qa init --app apps/mobile`; no app is selected implicitly.
 To use the current published version, run `npx kue-qa@latest init`. The CLI installs
-the SDK at the same exact version. Existing beta versions remain available for reproducible testing.
+the SDK at the same exact version.
 No Cloud account is needed to use the SDK with your own `onSubmit` callback and `submitLabel`.
 See the [SDK installation and API documentation](packages/react-native/README.md) for
 manual integration and the [CLI documentation](packages/cli/README.md) for tarball setup.
-Upgrades use normal package versions and your app's lockfile; yalc is not required.
+Upgrades use normal package versions and your app's lockfile.
 
-From CLI 0.3.4, repeating `init` with unchanged managed configuration, integration,
-and installed dependencies does not restart approval, run the package manager,
-or rewrite files. The CLI still reads the current plan when recording is
-set to `auto`; `off` skips that read. Use `--reconnect` to explicitly reconnect.
-See the [CLI documentation](packages/cli/README.md#idempotent-setup) for update,
-dependency, and configuration rules. Versions 0.3.3 and earlier repeat approval
-and installation; use `npx kue-qa@latest init` to select the current CLI.
+Repeating `init` with unchanged managed configuration, integration, and installed
+dependencies does not restart approval, run the package manager, or rewrite files.
+The CLI still reads the current plan when recording is set to `auto`; `off` skips
+that read. Use `--reconnect` to explicitly reconnect. See the
+[CLI documentation](packages/cli/README.md#idempotent-setup) for update,
+dependency, and configuration rules.
 
 The floating button defaults to a viewfinder design. Use
 `<Kue cloud={cloud} buttonDesign="mascot" />` to select the bundled character with the same gestures.
