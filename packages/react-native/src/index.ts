@@ -16,6 +16,7 @@ export type {
   KueGroupSubmitHandler,
   KueProjectFeatures,
   KueRecordingMode,
+  KueLocale,
   KueDestination,
   KueProps,
   KueReportContext,

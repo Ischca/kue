@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, BackHandler, Image, PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { kueMascotSource } from "./kue-mascot.generated";
+import type { KueText } from "./i18n";
 import type { KueProps } from "./types";
 import {
   beginTriggerGesture, endTriggerGesture, fitTriggerPosition, initialTriggerPosition,
@@ -12,8 +13,8 @@ import { canOpenHeldMenu, layoutRadialMenu, MENU_BUTTON_SIZE, MENU_HOLD_MS, MENU
 
 interface MenuSession { layout: RadialLayout; ids: string[] }
 
-export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilityChange, visible, design = "classic", count = 0, recording = false, stopping = false }: {
-  onPress: () => void; onLongPress?: () => void; visible: boolean;
+export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilityChange, visible, design = "classic", count = 0, recording = false, stopping = false, text }: {
+  onPress: () => void; onLongPress?: () => void; visible: boolean; text: KueText;
   actions?: CaptureAction[]; onMenuVisibilityChange?: (open: boolean) => void;
   design?: KueProps["buttonDesign"]; count?: number; recording?: boolean; stopping?: boolean;
 }) {
@@ -232,15 +233,15 @@ export function KueTrigger({ onPress, onLongPress, actions = [], onMenuVisibilit
         {...responder.panHandlers}
         accessible
         accessibilityRole="button"
-        accessibilityLabel={recording ? (stopping ? "録画を停止中" : "録画を停止") : edge ? "KUEボタンを表示" : "KUEで画面をキャプチャ"}
-        accessibilityHint={recording ? "タップで録画を停止し、確認画面を表示。ドラッグで移動できます" : edge ? "タップで戻します。ドラッグでも移動できます" : `タップで撮影、ドラッグで移動。画面端で隠せます${onLongPress ? "。長押し中にメニューを表示。スライドで選択、離して決定。アクセシビリティ操作から一覧も表示できます" : ""}${count ? `。追加した指摘${count}件` : ""}`}
+        accessibilityLabel={recording ? (stopping ? text.trigger.stopping : text.trigger.stop) : edge ? text.trigger.reveal : text.trigger.capture}
+        accessibilityHint={recording ? text.trigger.recordingHint : edge ? text.trigger.edgeHint : text.trigger.hint(!!onLongPress, count)}
         accessibilityState={{ disabled: stopping, busy: stopping }}
         accessibilityActions={[
           { name: "activate" },
-          ...(!recording && onLongPress ? [{ name: "actions", label: "操作メニューを表示" }] : []),
-          { name: "moveLeft", label: "左へ移動" }, { name: "moveRight", label: "右へ移動" },
-          { name: "moveUp", label: "上へ移動" }, { name: "moveDown", label: "下へ移動" },
-          ...(!recording ? [{ name: "hide", label: "近くの端に隠す" }] : []),
+          ...(!recording && onLongPress ? [{ name: "actions", label: text.trigger.actions }] : []),
+          { name: "moveLeft", label: text.trigger.moveLeft }, { name: "moveRight", label: text.trigger.moveRight },
+          { name: "moveUp", label: text.trigger.moveUp }, { name: "moveDown", label: text.trigger.moveDown },
+          ...(!recording ? [{ name: "hide", label: text.trigger.hide }] : []),
         ]}
         onAccessibilityTap={activate}
         onAccessibilityAction={event => {

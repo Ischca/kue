@@ -15,6 +15,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { createClientReportId } from "./clientReportId";
 import { CropEditor } from "./CropEditor";
 import { FULL_CROP, normalizeCrop } from "./crop";
+import type { KueText } from "./i18n";
 import { findingActionLabel, type FindingAction } from "./issueFlow";
 import { createCroppedScreenshot } from "./manipulate";
 import { OperationGeneration } from "./operationGeneration";
@@ -54,6 +55,7 @@ interface ReporterProps {
   onOpenSaved?: () => void;
   /** Hidden while the saved findings it opened are shown; memo and crop are kept. */
   hidden?: boolean;
+  text: KueText;
 }
 
 const asError = (value: unknown) =>
@@ -76,6 +78,7 @@ export function Reporter({
   notice,
   onOpenSaved,
   hidden = false,
+  text,
 }: ReporterProps) {
   const [memo, setMemo] = useState(initialMemo);
   const [crop, setCrop] = useState<NormalizedCrop>({ ...FULL_CROP });
@@ -208,7 +211,7 @@ export function Reporter({
           >
             <View style={styles.header}>
               <Pressable
-                accessibilityLabel="KUEを閉じる"
+                accessibilityLabel={text.finding.close}
                 accessibilityRole="button"
                 disabled={submitting}
                 hitSlop={12}
@@ -216,13 +219,13 @@ export function Reporter({
                 style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
                 testID="kue-cancel"
               >
-                <Text style={styles.cancelText}>キャンセル</Text>
+                <Text style={styles.cancelText}>{text.finding.cancel}</Text>
               </Pressable>
               <Text accessibilityRole="header" style={styles.title}>
                 KUE
               </Text>
               <Pressable
-                accessibilityLabel="クロップ範囲を全画面に戻す"
+                accessibilityLabel={text.finding.resetCropLabel}
                 accessibilityRole="button"
                 disabled={submitting}
                 hitSlop={12}
@@ -230,7 +233,7 @@ export function Reporter({
                 style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
                 testID="kue-reset-crop"
               >
-                <Text style={styles.resetText}>範囲をリセット</Text>
+                <Text style={styles.resetText}>{text.finding.resetCrop}</Text>
               </Pressable>
             </View>
 
@@ -240,18 +243,19 @@ export function Reporter({
                 crop={crop}
                 disabled={submitting}
                 onChange={updateCrop}
+                text={text}
               />
             ) : null}
 
             <View style={styles.composer}>
-              <Text style={styles.label}>何を直したい？</Text>
+              <Text style={styles.label}>{text.finding.prompt}</Text>
               <TextInput
-                accessibilityLabel="修正したい内容"
+                accessibilityLabel={text.finding.memoLabel}
                 autoFocus
                 editable={!submitting}
                 multiline
                 onChangeText={updateMemo}
-                placeholder="例：プロフィールカードの左右paddingを広げる"
+                placeholder={text.finding.placeholder}
                 placeholderTextColor="#94A3B8"
                 ref={inputRef}
                 returnKeyType="default"
@@ -272,20 +276,20 @@ export function Reporter({
               <View style={styles.actions}>
                 {onOpenSaved ? (
                   <Pressable
-                    accessibilityHint="この指摘を残したまま、保存した指摘の確認画面を開きます"
-                    accessibilityLabel="保存した指摘を開く"
+                    accessibilityHint={text.finding.openSavedHint}
+                    accessibilityLabel={text.finding.openSaved}
                     accessibilityRole="button"
                     disabled={submitting}
                     onPress={onOpenSaved}
                     style={({ pressed }) => [styles.addButton, submitting && styles.addButtonDisabled, pressed && styles.pressed]}
                     testID="kue-open-saved"
                   >
-                    <Text style={styles.addText}>保存した指摘を開く</Text>
+                    <Text style={styles.addText}>{text.finding.openSaved}</Text>
                   </Pressable>
                 ) : canCollect ? (
                   <Pressable
-                    accessibilityHint="送信せずに端末へ保存し、あとでまとめて送ります"
-                    accessibilityLabel="指摘を追加"
+                    accessibilityHint={text.finding.addHint}
+                    accessibilityLabel={text.finding.add}
                     accessibilityRole="button"
                     disabled={submitting || memo.trim().length === 0}
                     onPress={() => void handleSubmit("add")}
@@ -299,13 +303,13 @@ export function Reporter({
                     {pendingAction === "add" ? (
                       <ActivityIndicator color="#0F172A" />
                     ) : (
-                      <Text style={styles.addText}>指摘を追加</Text>
+                      <Text style={styles.addText}>{text.finding.add}</Text>
                     )}
                   </Pressable>
                 ) : null}
                 <Pressable
-                  accessibilityHint={collectedCount > 0 ? "追加した指摘と合わせて、確認画面を開きます" : undefined}
-                  accessibilityLabel={findingActionLabel(singleLabel, groupLabel, collectedCount)}
+                  accessibilityHint={collectedCount > 0 ? text.finding.withSavedHint : undefined}
+                  accessibilityLabel={findingActionLabel(singleLabel, groupLabel, collectedCount, text)}
                   accessibilityRole="button"
                   disabled={submitting || memo.trim().length === 0}
                   onPress={() => void handleSubmit("issue")}
@@ -319,7 +323,7 @@ export function Reporter({
                   {pendingAction === "issue" ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.sendText}>{findingActionLabel(singleLabel, groupLabel, collectedCount)}</Text>
+                    <Text style={styles.sendText}>{findingActionLabel(singleLabel, groupLabel, collectedCount, text)}</Text>
                   )}
                 </Pressable>
               </View>

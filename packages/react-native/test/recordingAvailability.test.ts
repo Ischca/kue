@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { recordingAvailability, recordingMessages } from "../src/recordingAvailability";
+import { kueText } from "../src/i18n";
+import { recordingAvailability } from "../src/recordingAvailability";
+
+const recordingMessages = kueText("ja").recording.messages;
 
 const base = { hasCloud: true, features: null, failed: false, nativeAvailable: false };
 const features = (entitled: boolean, available = true) => ({ groups: true, recording: { entitled, available } });

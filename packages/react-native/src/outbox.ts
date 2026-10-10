@@ -1,9 +1,13 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { normalizeKueCloudConfig, submitKueReport } from "./cloud";
+import { deviceKueLocale } from "./deviceLocale";
 import { copyFileSync, moveFileSync } from "./fileSync";
+import { currentKueText } from "./i18n";
 import { Outbox, type OutboxEntry, type OutboxStorage } from "./outboxCore";
 import type { KueCloudConfig, KueLocalReport, KueReceipt } from "./types";
 
+// The outbox API works without a mounted Kue, so its errors fall back to the device language.
+const text = () => currentKueText(deviceKueLocale);
 const root = () => new Directory(Paths.document, "kue-outbox-v1");
 const validId = (id: string) => /^[A-Za-z0-9._~-]{16,128}$/u.test(id);
 const directory = (id: string) => {
@@ -40,7 +44,7 @@ const storage: OutboxStorage = {
       if (!entry?.report || entry.report.clientReportId !== child.name.slice(5) ||
         !Number.isFinite(entry.savedAt) || !Number.isFinite(entry.bytes) || entry.bytes <= 0 ||
         typeof entry.destination !== "string" || entry.destination !== original.destination || !["pending", "blocked"].includes(entry.state)) {
-        throw new Error("KUEの送信待ちデータを読み込めませんでした。");
+        throw new Error(text().errors.outboxUnreadable);
       }
       entry.report.screenshot.uri = imageFile(entry).uri;
       entries.push(entry);
@@ -59,7 +63,7 @@ const storage: OutboxStorage = {
   update: writeEntry,
   remove(id) { const dir = directory(id); if (dir.exists) dir.delete(); },
 };
-const outbox = new Outbox(storage);
+const outbox = new Outbox(storage, Date.now, text);
 function destination(config: KueCloudConfig): string {
   const normalized = normalizeKueCloudConfig(config);
   return JSON.stringify([normalized.endpoint, normalized.projectKey]);

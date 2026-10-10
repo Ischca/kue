@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { kueText } from "../src/i18n";
 import { Outbox, OUTBOX_TTL, type OutboxEntry, type OutboxStorage } from "../src/outboxCore";
 import { dispatchKueReport } from "../src/submission";
 import type { KueLocalReport, KueReceipt } from "../src/types";
@@ -36,6 +37,12 @@ it("never retargets saved reports after a key or origin change", async () => {
   expect(send).not.toHaveBeenCalled();
   await expect(queue.submit(report, "B", config, 100, send)).rejects.toThrow(/送信先/);
   queue.discard("B", report.clientReportId); expect(queue.list("A")).toHaveLength(1);
+});
+it("raises its errors in the language of the text it is given", async () => {
+  const { storage } = setup();
+  const queue = new Outbox(storage, () => 1000, () => kueText("en"));
+  await queue.submit(report, "A", config, 100, async () => { throw unavailable; });
+  await expect(queue.submit(report, "B", config, 100, vi.fn())).rejects.toThrow("A saved report cannot change its destination.");
 });
 it("respects backoff, Retry-After, foreground state, and blocks permanent rejections", async () => {
   const { queue, advance } = setup();

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { getKueProjectFeatures, normalizeKueCloudConfig } from "./cloud";
 import type { KueCloudConfig, KueProjectFeatures, KueRecordingMode } from "./types";
-import { recordingAvailability, recordingMessages } from "./recordingAvailability";
+import { recordingAvailability } from "./recordingAvailability";
+import type { KueText } from "./i18n";
 import { nativeRecordingAvailable } from "./recording";
 import type { CaptureAction } from "./radialMenu";
 import { captureActionList } from "./captureActionList";
@@ -12,9 +13,10 @@ interface CaptureActionsOptions {
   recording?: KueRecordingMode;
   onClose: () => void; onCreateIssue: () => void; onOutbox: () => void;
   onRecord: () => void;
+  text: KueText;
 }
 
-export function useCaptureActions({ visible, cloud, recording = "auto", groupCount, groupLabel, outbox, onClose, onCreateIssue, onOutbox, onRecord }: CaptureActionsOptions): CaptureAction[] {
+export function useCaptureActions({ visible, cloud, recording = "auto", groupCount, groupLabel, outbox, onClose, onCreateIssue, onOutbox, onRecord, text }: CaptureActionsOptions): CaptureAction[] {
   const [features, setFeatures] = useState<KueProjectFeatures | null>(null);
   const [failure, setFailure] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -33,23 +35,23 @@ export function useCaptureActions({ visible, cloud, recording = "auto", groupCou
     onClose();
     if (availability !== "upgrade") {
       if (availability === "check_failed") setAttempt(value => value + 1);
-      Alert.alert("画面録画", recordingMessages[availability]); return;
+      Alert.alert(text.menu.recording, text.recording.messages[availability]); return;
     }
     if (availability === "upgrade" && cloud) {
-      Alert.alert("Indieで画面録画を解放", "画面録画はIndieプランで利用できます。スクリーンショットと、複数の指摘をまとめたIssueの作成はFreeでも利用できます。", [
-        { text: "閉じる", style: "cancel" },
-        { text: "プランを確認", onPress: () => {
+      Alert.alert(text.menu.unlockTitle, text.menu.unlockBody, [
+        { text: text.menu.close, style: "cancel" },
+        { text: text.menu.viewPlans, onPress: () => {
           const url = normalizeKueCloudConfig(cloud).endpoint.replace(/\/v1\/reports$/u, "/app");
-          void Linking.openURL(url).catch(() => Alert.alert("KUE", "ブラウザを開けませんでした。"));
+          void Linking.openURL(url).catch(() => Alert.alert("KUE", text.menu.browserFailed));
         } },
       ]); return;
     }
   };
-  return captureActionList({ groupCount, groupLabel, recording, availability, outbox, onCreateIssue, onRecord: record, onOutbox });
+  return captureActionList({ groupCount, groupLabel, recording, availability, outbox, onCreateIssue, onRecord: record, onOutbox, text });
 }
 
 /** TalkBack/VoiceOver and tiny-window fallback. Touch users use the radial menu. */
-export function CaptureActions({ visible, actions, onClose }: { visible: boolean; actions: CaptureAction[]; onClose: () => void }) {
+export function CaptureActions({ visible, actions, onClose, text }: { visible: boolean; actions: CaptureAction[]; onClose: () => void; text: KueText }) {
   return <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
     <View style={styles.backdrop}><View style={styles.card} accessibilityViewIsModal>
       <Text accessibilityRole="header" style={styles.heading}>KUE</Text>
@@ -57,7 +59,7 @@ export function CaptureActions({ visible, actions, onClose }: { visible: boolean
         disabled={action.disabled} onPress={action.onSelect} style={[styles.action, action.disabled && styles.disabled]} testID={`kue-menu-${action.id}`}>
         <Text style={styles.text}>{action.label}</Text>
       </Pressable>)}
-      <Pressable accessibilityRole="button" onPress={onClose} style={styles.action} testID="kue-menu-close"><Text style={styles.text}>閉じる</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={onClose} style={styles.action} testID="kue-menu-close"><Text style={styles.text}>{text.menu.close}</Text></Pressable>
     </View></View>
   </Modal>;
 }

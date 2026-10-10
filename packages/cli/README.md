@@ -7,7 +7,7 @@ With Xcode 27 and Expo SDK 57, use `expo@57.0.23` or later and enable
 Documentation: [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs).
 
 ```sh
-npx kue-qa@0.4.0 init
+npx kue-qa@0.5.0 init
 ```
 
 Run from the Expo package or the monorepo workspace root. A single Expo app in
@@ -61,8 +61,8 @@ manager, or use the matching newer CLI. An unchanged `init` is a no-op; use
 `--reconnect` to refresh the connection explicitly. There is no
 automatic SDK update or runtime dependency on this CLI.
 
-These instructions target version `0.4.0`; confirm it is available on npm before
-installation. Pin setup with `npx kue-qa@0.4.0 init`; the CLI installs the SDK at its own
+These instructions target version `0.5.0`; confirm it is available on npm before
+installation. Pin setup with `npx kue-qa@0.5.0 init`; the CLI installs the SDK at its own
 exact version, never a beta tag. SDK/CLI installation does not purchase a Cloud
 subscription. The KUE workspace owner manages purchases and cancellation in the
 [dashboard](https://kue.ischca.dev/en/app); rerunning or removing the CLI does not

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-10-11
+
+- Show the KUE screens in Japanese or English. Japanese is shown when it comes
+  before English in the device's preferred languages, English otherwise.
+- Add `locale` (`"ja"` or `"en"`) to fix the display language.
+- Behavior change: devices that do not prefer Japanese over English now show
+  English. Set `locale="ja"` to keep Japanese on every device.
+
 ## 0.4.0 — 2026-10-10
 
 - Choose Add finding or Create Issue on the finding screen. Create Issue includes

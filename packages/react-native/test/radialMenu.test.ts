@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { canOpenHeldMenu, layoutRadialMenu, MENU_BUTTON_SIZE, menuLabelWidth, radialSelection, type Point, type RadialLayout, type Rect } from "../src/radialMenu";
 import { beginTriggerGesture, moveTriggerGesture, TRIGGER_SIZE } from "../src/triggerPosition";
 
-// The longest names the SDK shows today; an app's submitLabel may be longer still.
+// The longest names the SDK shows today in each language; an app's submitLabel may be longer still.
 const names = ["Issueを作る（10件）", "画面録画 · Indieで解放", "送信待ち"];
+const englishNames = ["Create Issue (10)", "Screen recording · Indie", "Pending reports"];
 const EDGE = 8;
 const middle = (r: Rect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
 const square = (p: Point, size: number): Rect => ({ x: p.x - size / 2, y: p.y - size / 2, width: size, height: size });
@@ -44,9 +45,9 @@ function expectUsable(layout: RadialLayout, width: number, height: number, where
 
 describe("long-press menu layout", () => {
   it.each([[375, 600], [390, 740], [430, 830], [768, 1024]])("names every action in one tidy column of labels on a %sx%s portrait surface", (width, height) => {
-    for (const count of [1, 2, 3]) for (const origin of grid(width, height)) {
-      const where = `${count} actions at ${Math.round(origin.x)},${Math.round(origin.y)}`;
-      const layout = layoutRadialMenu(origin, { width, height }, names.slice(0, count));
+    for (const set of [names, englishNames]) for (const count of [1, 2, 3]) for (const origin of grid(width, height)) {
+      const where = `${set[0]} ×${count} at ${Math.round(origin.x)},${Math.round(origin.y)}`;
+      const layout = layoutRadialMenu(origin, { width, height }, set.slice(0, count));
       expect(layout, where).not.toBeNull();
       expectUsable(layout!, width, height, where);
       const leftOfButton = layout!.labels.map((rect, index) => rect.x + rect.width <= layout!.items[index]!.x);
@@ -61,8 +62,12 @@ describe("long-press menu layout", () => {
       const layout = layoutRadialMenu(origin, { width, height }, [...names, "保存した指摘", "設定"].slice(0, count));
       if (layout) expectUsable(layout, width, height, `${count} actions at ${Math.round(origin.x)},${Math.round(origin.y)}`);
     }
-    // Landscape phones still get the menu for every action KUE shows today.
-    if (width > height) for (const origin of grid(width, height)) expect(layoutRadialMenu(origin, { width, height }, names)).not.toBeNull();
+    // Landscape phones still get the menu for every action KUE shows today, in either language.
+    if (width > height) for (const set of [names, englishNames]) for (const origin of grid(width, height)) {
+      const layout = layoutRadialMenu(origin, { width, height }, set);
+      expect(layout).not.toBeNull();
+      expectUsable(layout!, width, height, `${set[0]} at ${Math.round(origin.x)},${Math.round(origin.y)}`);
+    }
   });
 
   it("narrows a long app-provided label instead of falling back to the list", () => {

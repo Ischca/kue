@@ -2,8 +2,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ native: { record: vi.fn(), stop: vi.fn(), cancel: vi.fn(), preview: vi.fn() }, available: true, remove: vi.fn() }));
 vi.mock("expo", () => ({ requireOptionalNativeModule: () => mocks.available ? mocks.native : null }));
 vi.mock("expo-file-system", () => ({ File: class { exists = true; delete() { mocks.remove(); } } }));
-beforeEach(() => {
+beforeEach(async () => {
   vi.resetModules(); vi.clearAllMocks(); mocks.available = true;
+  // A reset module registry has no display language yet; these checks read the Japanese text.
+  (await import("../src/i18n")).setKueLocale("ja");
   mocks.native.stop.mockResolvedValue(undefined); mocks.native.cancel.mockResolvedValue(undefined); mocks.native.preview.mockResolvedValue(undefined);
 });
 it("loads safely without the native module on Free/Expo Go and never invokes native permission", async () => {

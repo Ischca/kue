@@ -3,6 +3,7 @@ import { createClientReportId } from "./clientReportId";
 import { copyFileSync } from "./fileSync";
 import { GroupDraft, type GroupDraftStorage } from "./groupDraft";
 import { findingLimit, findingMedia, withFindingUri } from "./finding";
+import { currentKueText } from "./i18n";
 
 // The native recorder accepts the same draft directory names.
 const draftDirectory = /^kue-group-[A-Za-z0-9_-]+$/u;
@@ -19,7 +20,7 @@ export function createGroupDraft(): GroupDraft {
       const media = findingMedia(report);
       const source = new File(media.uri);
       const bytes = source.size;
-      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > findingLimit(report)) throw new Error("画像は1件10MiB、動画は1件20MiBまでです。");
+      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > findingLimit(report)) throw new Error(currentKueText().errors.mediaSize);
       directory.create({ intermediates: true, idempotent: true });
       const target = new File(directory, `${createClientReportId()}.${media.mimeType === "video/mp4" ? "mp4" : media.mimeType === "image/png" ? "png" : "jpg"}`);
       try { copyFileSync(source, target); }

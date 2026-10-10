@@ -24,7 +24,11 @@ export const rejected = [
   <Kue cloud={cloud} onSubmitGroup={saveGroup} />,
   // @ts-expect-error KUE Cloud always creates an Issue, so it takes no label.
   <Kue cloud={cloud} submitLabel="保存" />,
+  // @ts-expect-error The screens exist in Japanese and English only.
+  <Kue cloud={cloud} locale="fr" />,
 ];
+
+export const languages = [<Kue cloud={cloud} locale="en" />, <Kue cloud={cloud} locale="ja" />];
 
 // A destination chosen at runtime is one value, so the label travels with the handler.
 const chosen: KueDestination = maybeCloud ? { cloud: maybeCloud } : { onSubmit: save, submitLabel: "保存" };

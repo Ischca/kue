@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Modal, Pressable, StyleSheet, Text, TextInput } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { cancelRecording, previewRecording, recordScreen, releaseRecording, stopRecording } from "./recording";
+import type { KueText } from "./i18n";
 import type { KueCapturedVideo } from "./types";
 
 /** Recording never uploads. Save copies into the same explicit-confirmation draft as screenshots. */
 export interface RecordingControl { stop: () => void; stopping: boolean }
-export function RecordingFlow({ onSave, onClose, onControlChange }: {
+export function RecordingFlow({ onSave, onClose, onControlChange, text }: {
   onSave: (video: KueCapturedVideo, memo: string) => void;
+  text: KueText;
   onClose: () => void;
   onControlChange: (control: RecordingControl | null) => void;
 }) {
@@ -31,7 +33,7 @@ export function RecordingFlow({ onSave, onClose, onControlChange }: {
         owned.current = result; setVideo(result);
       } catch (cause) {
         settled = true;
-        if (!disposed) setError(cause instanceof Error ? cause.message : "録画を開始できませんでした。");
+        if (!disposed) setError(cause instanceof Error ? cause.message : text.recording.startFailed);
       }
     });
     return () => {
@@ -50,7 +52,7 @@ export function RecordingFlow({ onSave, onClose, onControlChange }: {
       if (!mounted.current) return;
       stoppingRef.current = false;
       setStopping(false);
-      Alert.alert("KUE", "録画を停止できませんでした。もう一度停止ボタンを押してください。");
+      Alert.alert("KUE", text.recording.stopFailed);
     });
   }, []);
   useEffect(() => {
@@ -63,19 +65,19 @@ export function RecordingFlow({ onSave, onClose, onControlChange }: {
   if (!video && !error) return null;
   return <Modal visible onRequestClose={onClose} animationType="none">
     <SafeAreaProvider><SafeAreaView style={styles.page}>
-      <Text style={styles.heading}>録画を確認</Text>
+      <Text style={styles.heading}>{text.recording.heading}</Text>
       {video ? <>
-        <Text style={styles.text}>{(video.durationMs / 1000).toFixed(1)}秒 · {(video.byteSize / 1024 / 1024).toFixed(1)}MiB · 無音</Text>
-        {action("動画を再生", () => { void previewRecording(video.uri).catch(() => setError("動画を再生できませんでした。")); })}
-        <TextInput multiline accessibilityLabel="録画の指摘" placeholder="指摘内容" placeholderTextColor="#64748B"
+        <Text style={styles.text}>{text.recording.details((video.durationMs / 1000).toFixed(1), (video.byteSize / 1024 / 1024).toFixed(1))}</Text>
+        {action(text.review.play, () => { void previewRecording(video.uri).catch(() => setError(text.review.playFailed)); })}
+        <TextInput multiline accessibilityLabel={text.recording.memoLabel} placeholder={text.recording.placeholder} placeholderTextColor="#64748B"
           value={memo} onChangeText={setMemo} maxLength={4096} style={styles.input} />
-        <Text style={styles.note}>端末内の下書きに追加します。送信前にIssueのタイトルと指摘を確認できます。</Text>
-        {action("下書きに追加して確認", () => {
-          try { onSave(video, memo.trim()); } catch (cause) { setError(cause instanceof Error ? cause.message : "追加できませんでした。"); }
+        <Text style={styles.note}>{text.recording.note}</Text>
+        {action(text.recording.save, () => {
+          try { onSave(video, memo.trim()); } catch (cause) { setError(cause instanceof Error ? cause.message : text.recording.saveFailed); }
         }, !memo.trim())}
       </> : null}
       {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-      {action("録画を破棄して戻る", onClose)}
+      {action(text.recording.discard, onClose)}
     </SafeAreaView></SafeAreaProvider>
   </Modal>;
 }

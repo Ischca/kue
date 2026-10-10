@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { GroupDraft } from "./groupDraft";
+import type { KueText } from "./i18n";
 import { defaultIssueTitle } from "./issueFlow";
 import { previewRecording } from "./recording";
 
-export function GroupReview({ draft, visible, validDestination, label, toCloud, onClose, onDiscard, onChanged, onSubmit }: {
-  draft: GroupDraft | null; visible: boolean; validDestination: boolean; onClose: () => void;
+export function GroupReview({ draft, visible, validDestination, label, toCloud, onClose, onDiscard, onChanged, onSubmit, text }: {
+  draft: GroupDraft | null; visible: boolean; validDestination: boolean; onClose: () => void; text: KueText;
   /** The group action, e.g. 「Issueを作る」; `toCloud` is false when an app handler receives the group. */
   label: string; toCloud: boolean;
   onDiscard: () => void; onChanged: () => void; onSubmit: (title: string) => Promise<void>;
@@ -25,35 +26,35 @@ export function GroupReview({ draft, visible, validDestination, label, toCloud, 
     if (busy || !draft) return;
     setBusy(true); setError("");
     try { await onSubmit(title); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "送信できませんでした。"); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : text.review.sendFailed); }
     finally { setBusy(false); onChanged(); }
   };
   return <Modal visible={visible && !!draft} onRequestClose={() => { if (!busy) onClose(); }} animationType="slide">
     <SafeAreaProvider><SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.content}>
       <Text accessibilityRole="header" style={styles.heading}>{label}</Text>
-      <Text style={styles.note}>{toCloud ? "送信するまでCloudにはアップロードしません。" : "送信するまで、指摘を端末の外へ送りません。"}下書きはアプリを終了すると失われます。</Text>
-      {!validDestination ? <Text style={styles.error}>接続先が変更されています。元の設定に戻すか、この下書きを破棄してください。</Text> : null}
-      {draft?.locked ? <Text style={styles.note}>送信済みの可能性があります。同じ内容で再送して受付を確認します。</Text> : null}
-      {draft?.full && !draft.locked ? <Text style={styles.note}>{toCloud ? "1つのIssueに入れられる" : "1回に送れる"}指摘は10件までです。新しい指摘を追加するには、どれかを削除してください。</Text> : null}
-      <TextInput accessibilityLabel={toCloud ? "Issueのタイトル" : "タイトル"} placeholder={toCloud ? "Issueのタイトル" : "タイトル"} placeholderTextColor="#64748B"
+      <Text style={styles.note}>{text.review.note(toCloud)}</Text>
+      {!validDestination ? <Text style={styles.error}>{text.review.destinationChanged}</Text> : null}
+      {draft?.locked ? <Text style={styles.note}>{text.review.maybeSent}</Text> : null}
+      {draft?.full && !draft.locked ? <Text style={styles.note}>{text.review.full(toCloud)}</Text> : null}
+      <TextInput accessibilityLabel={text.review.title(toCloud)} placeholder={text.review.title(toCloud)} placeholderTextColor="#64748B"
         editable={!busy && !draft?.locked} value={title} onChangeText={setTitle} maxLength={200} style={styles.input} />
       {draft?.findings.map((finding, index) => <View key={finding.clientReportId} style={styles.finding}>
         <Text style={styles.text}>{index + 1}. {finding.memo}</Text>
         {"video" in finding ? <>
-          <Text style={styles.note}>画面録画 · {(finding.video.durationMs / 1000).toFixed(1)}秒 · 無音</Text>
-          {action("動画を再生", () => { void previewRecording(finding.video.uri).catch(() => setError("動画を再生できませんでした。")); })}
+          <Text style={styles.note}>{text.review.video((finding.video.durationMs / 1000).toFixed(1))}</Text>
+          {action(text.review.play, () => { void previewRecording(finding.video.uri).catch(() => setError(text.review.playFailed)); })}
         </>
-          : <Image source={{ uri: finding.screenshot.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={`指摘${index + 1}の画像`} />}
-        {action("この指摘を削除", () => { draft.remove(finding.clientReportId); onChanged(); }, draft.locked)}
+          : <Image source={{ uri: finding.screenshot.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={text.review.image(index + 1)} />}
+        {action(text.review.remove, () => { draft.remove(finding.clientReportId); onChanged(); }, draft.locked)}
       </View>)}
       {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-      {action(busy ? "送信中…" : draft?.locked ? "同じ内容で再送" : `${label}（${draft?.findings.length ?? 0}件）`, () => void send(),
+      {action(busy ? text.review.sending : draft?.locked ? text.review.resend : text.count(label, draft?.findings.length ?? 0), () => void send(),
         !validDestination || !draft?.findings.length || (!draft.locked && !title.trim()))}
-      {action("戻る", onClose)}
-      {action("指摘をすべて破棄", () => Alert.alert("指摘をすべて破棄", draft?.locked
-        ? `端末の下書きを削除します。すでに受け付けられた場合、${toCloud ? "Issueの作成" : "送信"}は取り消されません。`
-        : "保存した指摘と画像を端末から削除します。送信はしません。", [
-        { text: "キャンセル", style: "cancel" }, { text: "破棄", style: "destructive", onPress: onDiscard },
+      {action(text.review.back, onClose)}
+      {action(text.review.discardAll, () => Alert.alert(text.review.discardAll, draft?.locked
+        ? text.review.discardLocked(toCloud)
+        : text.review.discardUnlocked, [
+        { text: text.review.cancel, style: "cancel" }, { text: text.review.discard, style: "destructive", onPress: onDiscard },
       ]))}
     </ScrollView></SafeAreaView></SafeAreaProvider>
   </Modal>;

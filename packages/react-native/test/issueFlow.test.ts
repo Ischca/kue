@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { captureActionList } from "../src/captureActionList";
+import { kueText } from "../src/i18n";
 import { actionLabels, closedDraftNotice, defaultIssueTitle, draftAccepts, findingActionLabel, joinedFindings, planFindingAction } from "../src/issueFlow";
+
+const ja = kueText("ja");
 
 describe("finding actions", () => {
   it("sends a lone finding at once and routes collected findings through the confirmation", () => {
@@ -10,9 +13,9 @@ describe("finding actions", () => {
     expect(planFindingAction("add", 9)).toBe("collect");
   });
   it("labels the main action with the total including the current finding", () => {
-    expect(findingActionLabel("Issueを作る", "Issueを作る", 0)).toBe("Issueを作る");
-    expect(findingActionLabel("Issueを作る", "Issueを作る", 2)).toBe("Issueを作る（3件）");
-    expect(findingActionLabel("Issueを作る", "Slackに送る", 1)).toBe("Slackに送る（2件）");
+    expect(findingActionLabel("Issueを作る", "Issueを作る", 0, ja)).toBe("Issueを作る");
+    expect(findingActionLabel("Issueを作る", "Issueを作る", 2, ja)).toBe("Issueを作る（3件）");
+    expect(findingActionLabel("Issueを作る", "Slackに送る", 1, ja)).toBe("Slackに送る（2件）");
   });
 });
 
@@ -20,20 +23,20 @@ describe("action labels", () => {
   const cloud = { apiBaseUrl: "https://kue.example.test", projectKey: "pk_test_example" };
   const handler = () => undefined;
   it("keeps Create Issue only where KUE Cloud receives the submission", () => {
-    expect(actionLabels({ cloud })).toEqual({ singleLabel: "Issueを作る", groupLabel: "Issueを作る", groupToCloud: true, missingLabel: false });
-    expect(actionLabels({ cloud, onSubmitGroup: handler, submitLabel: "Slackに送る" }))
+    expect(actionLabels({ cloud }, ja)).toEqual({ singleLabel: "Issueを作る", groupLabel: "Issueを作る", groupToCloud: true, missingLabel: false });
+    expect(actionLabels({ cloud, onSubmitGroup: handler, submitLabel: "Slackに送る" }, ja))
       .toEqual({ singleLabel: "Issueを作る", groupLabel: "Slackに送る", groupToCloud: false, missingLabel: false });
   });
   it("uses the app's label wherever its handler receives the submission", () => {
-    expect(actionLabels({ onSubmit: handler, submitLabel: " 保存 " }))
+    expect(actionLabels({ onSubmit: handler, submitLabel: " 保存 " }, ja))
       .toEqual({ singleLabel: "保存", groupLabel: "保存", groupToCloud: false, missingLabel: false });
-    expect(actionLabels({ cloud, onSubmit: handler, onSubmitGroup: handler, submitLabel: "保存" }))
+    expect(actionLabels({ cloud, onSubmit: handler, onSubmitGroup: handler, submitLabel: "保存" }, ja))
       .toMatchObject({ singleLabel: "保存", groupLabel: "保存", groupToCloud: false });
   });
   it("falls back to a neutral label for untyped callers and reports the missing label", () => {
-    expect(actionLabels({ onSubmit: handler })).toEqual({ singleLabel: "送信", groupLabel: "送信", groupToCloud: false, missingLabel: true });
-    expect(actionLabels({ cloud, onSubmitGroup: handler, submitLabel: "  " })).toMatchObject({ groupLabel: "送信", missingLabel: true });
-    expect(actionLabels({})).toEqual({ singleLabel: "送信", groupLabel: "送信", groupToCloud: false, missingLabel: false });
+    expect(actionLabels({ onSubmit: handler }, ja)).toEqual({ singleLabel: "送信", groupLabel: "送信", groupToCloud: false, missingLabel: true });
+    expect(actionLabels({ cloud, onSubmitGroup: handler, submitLabel: "  " }, ja)).toMatchObject({ groupLabel: "送信", missingLabel: true });
+    expect(actionLabels({}, ja)).toEqual({ singleLabel: "送信", groupLabel: "送信", groupToCloud: false, missingLabel: false });
   });
 });
 
@@ -48,9 +51,9 @@ describe("findings while the saved draft cannot take them", () => {
     expect([draftAccepts(draft(9)), draftAccepts(draft(10)), draftAccepts(draft(2, true))]).toEqual([true, false, false]);
   });
   it("tells why the finding goes alone and that opening the saved findings keeps it", () => {
-    expect(closedDraftNotice(draft(9))).toBeUndefined();
-    expect(closedDraftNotice(draft(10))).toMatch(/10件保存.*単独で送ります。保存した指摘を開いても、この指摘は消えません。$/u);
-    expect(closedDraftNotice(draft(10, true))).toMatch(/送信結果が確定していない.*単独で送ります。保存した指摘を開いて再送しても、この指摘は消えません。$/u);
+    expect(closedDraftNotice(draft(9), ja)).toBeUndefined();
+    expect(closedDraftNotice(draft(10), ja)).toMatch(/10件保存.*単独で送ります。保存した指摘を開いても、この指摘は消えません。$/u);
+    expect(closedDraftNotice(draft(10, true), ja)).toMatch(/送信結果が確定していない.*単独で送ります。保存した指摘を開いて再送しても、この指摘は消えません。$/u);
   });
 });
 
@@ -67,7 +70,7 @@ describe("default Issue title", () => {
 });
 
 describe("long-press menu", () => {
-  const options = () => ({ groupLabel: "Issueを作る", onCreateIssue: vi.fn(), onRecord: vi.fn(), onOutbox: vi.fn() });
+  const options = () => ({ groupLabel: "Issueを作る", onCreateIssue: vi.fn(), onRecord: vi.fn(), onOutbox: vi.fn(), text: ja });
   it("holds only what a tap cannot do: saved findings, recording and pending reports", () => {
     expect(captureActionList({ groupCount: 0, recording: "auto", availability: "ready", outbox: false, ...options() }).map(a => a.id))
       .toEqual(["recording"]);

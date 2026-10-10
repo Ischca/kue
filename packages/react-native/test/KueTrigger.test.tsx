@@ -46,6 +46,7 @@ vi.mock("react-native", () => ({
 vi.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 0 }) }));
 
 import { KueTrigger } from "../src/KueTrigger";
+import { kueText } from "../src/i18n";
 import { layoutRadialMenu, MENU_HOLD_MS, menuLabelWidth, type CaptureAction } from "../src/radialMenu";
 
 function find(node: any, testID: string): any {
@@ -61,7 +62,7 @@ function texts(node: any): string[] {
 const pink = (node: any) => [node?.props.style].flat(Infinity).some((style: any) => style?.backgroundColor === "#DB2777");
 function mount(overrides: Partial<Parameters<typeof KueTrigger>[0]> = {}) {
   const actions: CaptureAction[] = ["capture", "collect", "record"].map(id => ({ id, label: id, symbol: "+", onSelect: vi.fn() }));
-  let props = { visible: true, onPress: vi.fn(), onLongPress: vi.fn(), onMenuVisibilityChange: vi.fn(), actions, ...overrides };
+  let props = { visible: true, onPress: vi.fn(), onLongPress: vi.fn(), onMenuVisibilityChange: vi.fn(), actions, text: kueText("ja"), ...overrides };
   let tree: any;
   const render = () => {
     let runs = 0;

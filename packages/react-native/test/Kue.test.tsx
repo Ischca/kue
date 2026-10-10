@@ -4,7 +4,8 @@ import type { KueLocalReport, KueProps } from "../src/types";
 // Small hook host, as in KueTrigger.test: Kue's own hooks run for real, and child
 // screens are driven through the props Kue passes to them.
 const host = vi.hoisted(() => ({ slots: [] as any[], cursor: 0, effects: [] as (() => void)[], dirty: false }));
-const mocks = vi.hoisted(() => ({ captures: 0, open: undefined as undefined | (() => Promise<void>), submitKueReport: undefined as any, submitKueReportGroup: undefined as any, features: undefined as any }));
+const mocks = vi.hoisted(() => ({ captures: 0, open: undefined as undefined | (() => Promise<void>), submitKueReport: undefined as any, submitKueReportGroup: undefined as any, features: undefined as any,
+  platform: "ios", languages: undefined as unknown }));
 vi.mock("react", () => {
   const same = (a?: unknown[], b?: unknown[]) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
   const memo = (fn: () => unknown, deps: unknown[]) => {
@@ -33,7 +34,8 @@ vi.mock("react", () => {
   };
 });
 vi.mock("react-native", () => ({
-  Alert: { alert: vi.fn() }, Linking: { openURL: async () => undefined }, Platform: { OS: "ios" },
+  Alert: { alert: vi.fn() }, Linking: { openURL: async () => undefined }, Platform: { get OS() { return mocks.platform; } },
+  Settings: { get: (key: string) => (key === "AppleLanguages" ? mocks.languages : undefined) },
   AppState: { currentState: "active", addEventListener: () => ({ remove() {} }) },
   StyleSheet: { create: (v: unknown) => v, absoluteFill: {} }, View: "View", Text: "Text", Pressable: "Pressable", Modal: "Modal",
 }));
@@ -76,7 +78,7 @@ function mount(props: Partial<KueProps> = {}) {
     do {
       if (++runs > 20) throw new Error("Unstable hook render");
       host.dirty = false; host.cursor = 0;
-      tree = Kue({ enabled: true, cloud, ...props } as KueProps);
+      tree = Kue({ enabled: true, cloud, locale: "ja", ...props } as KueProps);
       host.effects.splice(0).forEach(effect => effect());
     } while (host.dirty);
   };
@@ -106,6 +108,7 @@ function mount(props: Partial<KueProps> = {}) {
 
 beforeEach(() => {
   mocks.captures = 0; mocks.open = undefined; mocks.features = { recording: { entitled: true, available: true } };
+  mocks.platform = "ios"; mocks.languages = undefined;
   mocks.submitKueReport = vi.fn(async () => ({ reportId: "receipt" }));
   mocks.submitKueReportGroup = vi.fn(async () => ({ reportId: "group" }));
 });
@@ -284,5 +287,38 @@ describe("screen recording from the long-press menu", () => {
     closed.screen("CaptureActions").props.onClose();
     await closed.settle();
     expect(closed.screen("RecordingFlow")).toBeUndefined();
+  });
+});
+
+describe("display language", () => {
+  const actionLabels = (view: ReturnType<typeof mount>) => view.screen("KueTrigger").props.actions.map((action: { label: string }) => action.label);
+
+  it("shows the English screens, menu and errors when locale is en", async () => {
+    const view = mount({ locale: "en" });
+    expect(view.screen("Reporter").props).toMatchObject({ singleLabel: "Create Issue", groupLabel: "Create Issue" });
+    expect(view.screen("Reporter").props.text.finding.add).toBe("Add finding");
+    expect(view.screen("GroupReview").props.text.review.back).toBe("Back");
+    await view.saveFindings(10);
+    expect(actionLabels(view)).toEqual(["Create Issue (10)", "Screen recording"]);
+    await view.capture();
+    expect(view.screen("Reporter").props.notice).toBe("10 findings are already saved, so this finding is sent on its own. Opening the saved findings keeps this finding.");
+    // Errors raised by the draft follow the screens.
+    const { currentKueText } = await import("../src/i18n");
+    expect(currentKueText().errors.draftFull).toBe("Up to 10 findings can be sent at once.");
+  });
+
+  it("follows the device's preferred languages when locale is not set", () => {
+    mocks.languages = ["ja-JP", "en-JP"];
+    expect(mount({ locale: undefined }).screen("Reporter").props.singleLabel).toBe("Issueを作る");
+    mocks.languages = ["en-US"];
+    expect(mount({ locale: undefined }).screen("Reporter").props.singleLabel).toBe("Create Issue");
+    mocks.languages = ["en-US"];
+    expect(mount({ locale: "ja" }).screen("Reporter").props.singleLabel).toBe("Issueを作る");
+  });
+
+  it("keeps an app's submitLabel as written in either language", () => {
+    const handler = vi.fn();
+    const view = mount({ locale: "en", cloud: undefined, onSubmit: handler, submitLabel: "保存" } as Partial<KueProps>);
+    expect(view.screen("Reporter").props).toMatchObject({ singleLabel: "保存", groupLabel: "保存" });
   });
 });

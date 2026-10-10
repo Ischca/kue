@@ -1,3 +1,4 @@
+import { currentKueText, type KueText } from "./i18n";
 import type { KueCloudConfig, KueLocalReport, KueReceipt } from "./types";
 
 export interface OutboxEntry {
@@ -22,7 +23,7 @@ export const OUTBOX_TTL = 7 * 86400_000;
 export class Outbox {
   private running = new Map<string, Promise<KueReceipt | null>>();
   private flushing = new Map<string, Promise<void>>();
-  constructor(private storage: OutboxStorage, private now = Date.now) {}
+  constructor(private storage: OutboxStorage, private now = Date.now, private text: () => KueText = currentKueText) {}
 
   list(destination?: string): OutboxEntry[] {
     return this.prune().filter((item) => destination === undefined || item.destination === destination);
@@ -35,7 +36,7 @@ export class Outbox {
     });
   }
   discard(destination: string, id: string): void {
-    if (this.running.has(id)) throw new Error("送信中のレポートは削除できません。");
+    if (this.running.has(id)) throw new Error(this.text().errors.reportSending);
     if (this.list(destination).some((entry) => entry.report.clientReportId === id)) this.storage.remove(id);
   }
   discardStored(id: string): void {
@@ -46,13 +47,13 @@ export class Outbox {
     send: (report: KueLocalReport, config: KueCloudConfig) => Promise<KueReceipt>): Promise<KueReceipt | null> {
     const entries = this.prune();
     let entry = entries.find((item) => item.report.clientReportId === report.clientReportId);
-    if (entry && entry.destination !== destination) throw new Error("保存済みレポートの送信先を変更することはできません。");
+    if (entry && entry.destination !== destination) throw new Error(this.text().errors.reportDestination);
     const payload = (value: KueLocalReport) => JSON.stringify({ ...value, screenshot: { ...value.screenshot, uri: "" } });
-    if (entry && payload(entry.report) !== payload(report)) throw new Error("保存済みレポートの内容が変わっています。新しいレポートとして送信してください。");
+    if (entry && payload(entry.report) !== payload(report)) throw new Error(this.text().errors.reportChanged);
     if (!entry) {
-      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) throw new Error("保存する画像のサイズが不正です。");
+      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) throw new Error(this.text().errors.imageSize);
       if (entries.length >= OUTBOX_MAX_COUNT || entries.reduce((sum, item) => sum + item.bytes, 0) + bytes > OUTBOX_MAX_BYTES) {
-        throw new Error("KUEの送信待ちが上限です（10件・50MB）。送信待ちを送信または削除してください。");
+        throw new Error(this.text().errors.outboxFull);
       }
       entry = this.storage.save({ report, destination, bytes, savedAt: this.now(), attempts: 0, nextAttemptAt: 0, state: "pending" });
     }

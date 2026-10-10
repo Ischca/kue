@@ -5,9 +5,10 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { FileSystemApi } from "./support/fileSystemMock";
 
-const mocks = vi.hoisted(() => ({ send: vi.fn(), fs: { api: "current" as FileSystemApi, root: "" } }));
+const mocks = vi.hoisted(() => ({ send: vi.fn(), fs: { api: "current" as FileSystemApi, root: "" }, languages: [] as string[] }));
 // Exercise real file bytes/renames/restart state, with only the native filesystem bridge replaced.
 vi.mock("expo-file-system", async () => (await import("./support/fileSystemMock")).fileSystemMock(mocks.fs));
+vi.mock("react-native", () => ({ Platform: { OS: "ios" }, Settings: { get: (key: string) => key === "AppleLanguages" ? mocks.languages : undefined } }));
 vi.mock("../src/cloud", () => ({ submitKueReport: mocks.send, normalizeKueCloudConfig: (config: { apiBaseUrl: string; projectKey: string }) => ({ endpoint: config.apiBaseUrl + "/v1/reports", projectKey: config.projectKey }) }));
 import { pendingKueReports, retryPendingKueReports, submitWithOutbox } from "../src/outbox";
 import type { KueLocalReport } from "../src/types";
@@ -46,5 +47,25 @@ describe.each(["current", "legacy"] as const)("expo-file-system %s API", (api) =
     const incomplete = path.join(mocks.fs.root, "kue-outbox-v1", `item-${report.clientReportId}`);
     fs.mkdirSync(incomplete, { recursive: true }); fs.writeFileSync(path.join(incomplete, "capture.jpg"), "partial");
     expect(pendingKueReports(cloud)).toEqual([]); expect(mocks.send).not.toHaveBeenCalled(); expect(fs.existsSync(incomplete)).toBe(false);
+  });
+});
+
+describe("errors before a KUE mounts", () => {
+  it("follow the device's preferred languages, not the app's own locale", async () => {
+    // An app without a Japanese localization reports en-JP through Intl on a Japanese iPhone.
+    const runtime = vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => ({ resolvedOptions: () => ({ locale: "en-JP" }) }) as unknown as Intl.DateTimeFormat);
+    try {
+      mocks.fs.api = "current";
+      vi.resetModules();
+      const fresh = await import("../src/outbox");
+      const unreadable = path.join(mocks.fs.root, "kue-outbox-v1", `item-${report.clientReportId}`);
+      fs.mkdirSync(unreadable, { recursive: true }); fs.writeFileSync(path.join(unreadable, "report.json"), "{}");
+      mocks.languages = ["ja-JP", "en-JP"];
+      expect(() => fresh.pendingKueReports(cloud)).toThrow("KUEの送信待ちデータを読み込めませんでした。");
+      mocks.languages = ["en-US", "ja-JP"];
+      expect(() => fresh.pendingKueReports(cloud)).toThrow("Could not read the KUE pending reports.");
+    } finally {
+      runtime.mockRestore();
+    }
   });
 });

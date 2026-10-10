@@ -18,6 +18,7 @@ import {
   type Rect,
   type Size,
 } from "./crop";
+import type { KueText } from "./i18n";
 import type { KueCapturedImage, NormalizedCrop } from "./types";
 
 interface CropEditorProps {
@@ -25,17 +26,11 @@ interface CropEditorProps {
   crop: NormalizedCrop;
   disabled?: boolean;
   onChange: (crop: NormalizedCrop) => void;
+  text: KueText;
 }
 
 const HANDLE_SIZE = 30;
 const ACCESSIBILITY_STEP = 0.04;
-
-const handleLabels: Record<CropHandle, string> = {
-  "north-west": "クロップ範囲の左上",
-  "north-east": "クロップ範囲の右上",
-  "south-west": "クロップ範囲の左下",
-  "south-east": "クロップ範囲の右下",
-};
 
 const handlePositions: Record<CropHandle, ViewStyle> = {
   "north-west": { left: -HANDLE_SIZE / 2, top: -HANDLE_SIZE / 2 },
@@ -100,7 +95,7 @@ function accessibilityDelta(handle: CropHandle, expand: boolean) {
   };
 }
 
-export function CropEditor({ capture, crop, disabled = false, onChange }: CropEditorProps) {
+export function CropEditor({ capture, crop, disabled = false, onChange, text }: CropEditorProps) {
   const [container, setContainer] = useState<Size>({ width: 0, height: 0 });
   const normalized = normalizeCrop(crop);
   const cropRef = useRef(normalized);
@@ -214,14 +209,14 @@ export function CropEditor({ capture, crop, disabled = false, onChange }: CropEd
               <View
                 {...responder}
                 accessibilityActions={[
-                  { name: "increment", label: "範囲を広げる" },
-                  { name: "decrement", label: "範囲を狭める" },
+                  { name: "increment", label: text.crop.expand },
+                  { name: "decrement", label: text.crop.shrink },
                 ]}
-                accessibilityHint="ドラッグ、または調整操作でクロップ範囲を変更します"
-                accessibilityLabel={handleLabels[handle]}
+                accessibilityHint={text.crop.hint}
+                accessibilityLabel={text.crop.handles[handle]}
                 accessibilityRole="adjustable"
                 accessibilityValue={{
-                  text: `横 ${Math.round(normalized.width * 100)}%、縦 ${Math.round(normalized.height * 100)}%`,
+                  text: text.crop.value(Math.round(normalized.width * 100), Math.round(normalized.height * 100)),
                 }}
                 key={handle}
                 onAccessibilityAction={(event) => {

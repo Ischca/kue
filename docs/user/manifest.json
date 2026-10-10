@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "0.4.0",
-  "reviewedAt": "2026-10-10",
+  "sdkVersion": "0.5.0",
+  "reviewedAt": "2026-10-11",
   "sections": ["requirements", "quickstart", "manual", "capture", "context", "triggers", "outbox", "management", "data", "updates", "troubleshooting"]
 }

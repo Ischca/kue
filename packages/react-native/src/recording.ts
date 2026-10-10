@@ -1,5 +1,6 @@
 import { requireOptionalNativeModule } from "expo";
 import { File } from "expo-file-system";
+import { currentKueText } from "./i18n";
 import type { KueCapturedVideo } from "./types";
 
 interface Recorder {
@@ -12,12 +13,12 @@ interface Recorder {
 const recorder = requireOptionalNativeModule<Recorder>("KueRecorder");
 export const nativeRecordingAvailable = () => recorder !== null;
 export async function recordScreen(): Promise<KueCapturedVideo> {
-  if (!recorder) throw new Error("CLIで設定を更新し、アプリを再ビルドしてください。");
+  if (!recorder) throw new Error(currentKueText().errors.rebuild);
   return recorder.record();
 }
 export const stopRecording = () => recorder?.stop() ?? Promise.resolve();
 export const cancelRecording = () => recorder?.cancel() ?? Promise.resolve();
-export const previewRecording = (uri: string) => recorder?.preview(uri) ?? Promise.reject(new Error("動画プレビューを開けませんでした。"));
+export const previewRecording = (uri: string) => recorder?.preview(uri) ?? Promise.reject(new Error(currentKueText().errors.previewFailed));
 export function releaseRecording(uri: string): void {
   // Only the recorder's cache directory is owned here, never arbitrary adapters/files.
   if (!/^file:\/\//u.test(uri) || !/\/kue-recordings\/[A-Za-z0-9_-]+\.mp4$/u.test(uri)) return;

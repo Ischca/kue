@@ -85,6 +85,8 @@ export interface KueProjectFeatures {
 export type KueGroupSubmitHandler = (group: KueReportGroup) => void | Promise<void>;
 /** Runtime opt-out. Native inclusion is resolved separately by the CLI before building. */
 export type KueRecordingMode = "auto" | "off";
+/** Display language of the KUE screens. */
+export type KueLocale = "ja" | "en";
 
 export type KueCaptureAdapter = () => Promise<KueCapturedImage>;
 /**
@@ -142,6 +144,9 @@ export interface KueBaseProps {
   floatingButton?: boolean;
   /** Floating button artwork. Defaults to the classic KUE text button. */
   buttonDesign?: "classic" | "mascot";
+  /** Fixes the display language. By default, Japanese when it comes before English in the
+   * device's preferred languages, English otherwise. */
+  locale?: KueLocale;
   /** Optional sources, subscribed only while active, foregrounded and idle. */
   triggers?: readonly KueTriggerSource[];
   /** Defaults to __DEV__. */

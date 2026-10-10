@@ -2,35 +2,36 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { discardStoredKueReport, pendingKueReports, retryPendingKueReports } from "./outbox";
+import type { KueText } from "./i18n";
 import type { KueCloudConfig } from "./types";
 
-export function OutboxView({ cloud, visible, onClose }: { cloud: KueCloudConfig; visible: boolean; onClose: () => void }) {
+export function OutboxView({ cloud, visible, onClose, text }: { cloud: KueCloudConfig; visible: boolean; onClose: () => void; text: KueText }) {
   const [entries, setEntries] = useState<ReturnType<typeof pendingKueReports>>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const refresh = useCallback(() => {
-    try { setEntries(pendingKueReports(cloud, true)); } catch (cause) { setError(cause instanceof Error ? cause.message : "読み込みに失敗しました。"); }
+    try { setEntries(pendingKueReports(cloud, true)); } catch (cause) { setError(cause instanceof Error ? cause.message : text.outbox.loadFailed); }
   }, [cloud.apiBaseUrl, cloud.projectKey]);
   useEffect(() => { if (visible) { setError(""); refresh(); } }, [visible, refresh]);
   const retry = async () => {
     setBusy(true); setError("");
-    try { await retryPendingKueReports(cloud, { force: true, active: () => AppState.currentState === "active", error: (cause) => setError(cause instanceof Error ? cause.message : "送信に失敗しました。") }); }
+    try { await retryPendingKueReports(cloud, { force: true, active: () => AppState.currentState === "active", error: (cause) => setError(cause instanceof Error ? cause.message : text.outbox.sendFailed) }); }
     finally { setBusy(false); refresh(); }
   };
   return <Modal visible={visible} onRequestClose={() => { if (!busy) onClose(); }} animationType="slide">
     <SafeAreaProvider><SafeAreaView style={styles.page}>
-      <View style={styles.row}><Text style={styles.title}>KUE · 送信待ち</Text><Pressable disabled={busy} onPress={onClose} accessibilityRole="button"><Text>閉じる</Text></Pressable></View>
-      <Text>現在の送信先だけを再送します。保存から7日後、次の起動・確認時に削除されます。</Text>
+      <View style={styles.row}><Text style={styles.title}>{text.outbox.title}</Text><Pressable disabled={busy} onPress={onClose} accessibilityRole="button"><Text>{text.outbox.close}</Text></Pressable></View>
+      <Text>{text.outbox.note}</Text>
       {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      <Pressable disabled={busy || !entries.length} accessibilityRole="button" onPress={() => void retry().catch((cause: unknown) => setError(String(cause)))} style={styles.button}><Text>{busy ? "送信中…" : "今すぐ再送"}</Text></Pressable>
-      <ScrollView>{!entries.length && <Text>送信待ちはありません。</Text>}{entries.map((entry) => <View key={entry.clientReportId} style={styles.item}>
-        <Text>{new Date(entry.savedAt).toLocaleString()} · {!entry.currentDestination ? "別の送信先（再送しません）" : entry.state === "blocked" ? "要確認" : "送信待ち"}</Text>
+      <Pressable disabled={busy || !entries.length} accessibilityRole="button" onPress={() => void retry().catch((cause: unknown) => setError(String(cause)))} style={styles.button}><Text>{busy ? text.outbox.sending : text.outbox.resend}</Text></Pressable>
+      <ScrollView>{!entries.length && <Text>{text.outbox.empty}</Text>}{entries.map((entry) => <View key={entry.clientReportId} style={styles.item}>
+        <Text>{new Date(entry.savedAt).toLocaleString()} · {!entry.currentDestination ? text.outbox.otherDestination : entry.state === "blocked" ? text.outbox.blocked : text.outbox.pending}</Text>
         <Text selectable>{entry.clientReportId}</Text>
-        <Pressable disabled={busy} accessibilityRole="button" onPress={() => Alert.alert("送信待ちを削除", "この端末に保存した画像とメモを削除します。取り消せません。", [
-          { text: "キャンセル", style: "cancel" }, { text: "削除", style: "destructive", onPress: () => {
+        <Pressable disabled={busy} accessibilityRole="button" onPress={() => Alert.alert(text.outbox.deleteTitle, text.outbox.deleteBody, [
+          { text: text.outbox.cancel, style: "cancel" }, { text: text.outbox.delete, style: "destructive", onPress: () => {
             try { discardStoredKueReport(entry.clientReportId); refresh(); } catch (cause) { setError(String(cause)); }
           } },
-        ])}><Text style={styles.error}>削除</Text></Pressable>
+        ])}><Text style={styles.error}>{text.outbox.delete}</Text></Pressable>
       </View>)}</ScrollView>
     </SafeAreaView></SafeAreaProvider>
   </Modal>;

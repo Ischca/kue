@@ -2,7 +2,7 @@
 
 KUE adds screen capture, cropping, and memo entry to Expo / React Native apps. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Target version: SDK and CLI **0.4.0**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
+Target version: SDK and CLI **0.5.0**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
@@ -108,7 +108,7 @@ The CLI does not store GitHub user tokens or billing credentials in the applicat
 
 ### Setup for manually mounted components
 
-In CLI 0.4.0, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
+In CLI 0.5.0, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
 
 ```sh
 kue-qa init --skip-integration
@@ -123,10 +123,10 @@ After a newer CLI updates the SDK, review the diff and use the application's exi
 
 ### Dependencies
 
-Install SDK 0.4.0 with the application's existing package manager and maintain one lockfile format.
+Install SDK 0.5.0 with the application's existing package manager and maintain one lockfile format.
 
 ```sh
-npm install @kue-qa/react-native@0.4.0
+npm install @kue-qa/react-native@0.5.0
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
 ```
 
@@ -193,15 +193,13 @@ The image URI references a temporary file. Copy or upload the image before the c
 
 ### Procedure
 
-The screenshots show the SDK's Japanese interface; this guide translates its labels.
-
 1. Tap the KUE button.
 
-   ![App screen with the KUE button in the lower-right corner](images/kue-button.webp)
+   ![App screen with the KUE button in the lower-right corner](images/kue-button.en.webp)
 
 2. Drag the corners of the frame to select an area, then enter a memo.
 
-   ![Finding screen with the crop frame, the memo field, and the Add finding and Create Issue buttons](images/finding-screen.webp)
+   ![Finding screen with the crop frame, the memo field, and the Add finding and Create Issue buttons](images/finding-screen.en.webp)
 
 3. Check that the report contains no secrets or personal information, then select Create Issue. To send it together with other findings, select Add finding instead; see Grouped findings.
 4. For Cloud submissions, check delivery status and the created Issue in the dashboard.
@@ -226,6 +224,18 @@ The default is a viewfinder button. Set `buttonDesign="mascot"` to display the c
 
 Position is not retained across application restarts.
 
+### Display language
+
+KUE screens are available in Japanese and English. KUE uses Japanese when Japanese comes before English in the device's preferred languages, and English otherwise. iOS reads the device language settings, including per-app languages; Android uses the language applied to the app.
+
+To fix the display language, set `locale` to `"ja"` or `"en"`.
+
+```tsx
+<Kue cloud={cloud} locale="en" />
+```
+
+The text given in `submitLabel` is shown as written in either language. Descriptions of errors from KUE Cloud submissions are in English in either language.
+
 ### Issue contents
 
 Issues contain the cropped image, memo, and device/application metadata. The default label is `kue`. KUE creates the label when missing and leaves existing label settings unchanged. Custom label names are not supported.
@@ -239,13 +249,13 @@ Multiple images or videos can be submitted in one Issue. Production Cloud suppor
 3. On the last finding, select Create Issue (N). N is the number of saved findings plus the current one. The confirmation screen opens after the finding screen closes.
 4. Review the images and memos and remove unwanted findings. The title defaults to the first line of the first finding's memo. Edit the title if needed, then select Create Issue (N).
 
-   ![Confirmation screen with the title field and two findings](images/confirmation-screen.webp)
+   ![Confirmation screen with the title field and two findings](images/confirmation-screen.en.webp)
 
 Without saved findings, Create Issue sends only the current finding and does not open the confirmation screen. Add finding appears when `cloud` is set without `onSubmit`, or when `onSubmitGroup` is set.
 
 To create an Issue from saved findings only, hold the KUE button for about 0.5 seconds and release over Create Issue (N) in the menu that opens. The confirmation screen opens without a new capture. This item appears only while findings are saved.
 
-![Long-press menu with Create Issue (1) selected](images/long-press-menu.webp)
+![Long-press menu with Create Issue (1) selected](images/long-press-menu.en.webp)
 
 The long-press menu shows only actions that a tap cannot perform.
 
@@ -257,9 +267,9 @@ The long-press menu shows only actions that a tap cannot perform.
 
 The items appear next to the KUE button, each named beside its button. Names are placed where the screen edge and other items cannot cover them; when they do not fit, the menu opens as a list. Release over a button or its name to choose that action; release over the KUE button or away from the items to cancel. Moving before the menu opens drags the button. Rotation, backgrounding and multitouch cancel selection. TalkBack/VoiceOver users can choose from a list through the Show actions menu accessibility action. Without menu items, a hold starts a capture like a tap.
 
-With 10 saved findings, or while the send result of the saved findings is unconfirmed, a KUE tap, a trigger and `reportIssue()` still start a capture. The current finding cannot join the draft, so the finding screen shows Open saved findings instead of Add finding, with the reason. Create Issue sends only the current finding.
+With 10 saved findings, or while the send result of the saved findings is unconfirmed, a KUE tap, a trigger and `reportIssue()` still start a capture. The current finding cannot join the draft, so the finding screen shows Saved findings instead of Add finding, with the reason. Create Issue sends only the current finding.
 
-Open saved findings opens the confirmation screen and keeps the current finding. Sending, resending or discarding the saved findings there, or selecting Back, returns to the finding screen. The crop and memo are kept. If the current finding can then join the draft, Add finding is shown.
+Saved findings opens the confirmation screen and keeps the current finding. Sending, resending or discarding the saved findings there, or selecting Back, returns to the finding screen. The crop and memo are kept. If the current finding can then join the draft, Add finding is shown.
 
 While the draft cannot take a finding, selecting Screen recording from the long-press menu opens the confirmation screen without recording.
 
@@ -288,7 +298,7 @@ The Issue contains a link to open the video. Anyone with its URL can view it; do
 
 ### Recording build configuration
 
-CLI 0.4.0 manages native recorder inclusion.
+CLI 0.5.0 manages native recorder inclusion.
 
 Set `kue.recording` in the selected application's `package.json`. The default is `auto`. `init` checks the connected workspace entitlement and configures the native recorder for exclusion on Free or inclusion on Indie. `off` excludes it regardless of plan. Screenshot dependencies are not excluded.
 
@@ -313,7 +323,7 @@ Updating configuration does not change an installed application. When a recordin
 Before distributing a build, check whether the selected app can currently submit using its managed configuration.
 
 ```sh
-npx kue-qa@0.4.0 check
+npx kue-qa@0.5.0 check
 ```
 
 Use `--app` to select the app. Alternatively, `--config project.json` reads dashboard JSON, or `--env` reads the already-resolved build variables `EXPO_PUBLIC_KUE_MODE`, `EXPO_PUBLIC_KUE_API_BASE_URL`, `EXPO_PUBLIC_KUE_PROJECT_KEY`, and optional `EXPO_PUBLIC_KUE_ENABLED`. These three configuration sources are mutually exclusive. Never put a key in a command argument. `--env` does not load dotenv; resolve the values used by Expo/EAS before invoking it.
@@ -349,6 +359,7 @@ Configure either `cloud` or `onSubmit`. Other props are optional.
 | `context` | `{}` | Add to or override automatically collected metadata |
 | `floatingButton` | `true` | Show the button. Other triggers remain available when `false` |
 | `buttonDesign` | `"classic"` | `"classic"` uses the viewfinder button; `"mascot"` uses the character |
+| `locale` | Device language | Display language of the KUE screens: `"ja"` or `"en"`. When omitted, follows the device's preferred languages |
 | `triggers` | Not set | Array of additional trigger sources |
 | `offlineQueue` | `false` | Persist pending Cloud submissions on the device |
 | `onQueued` | Not set | Notify with `clientReportId` after local persistence when Cloud has not accepted the report |
@@ -586,21 +597,23 @@ Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privac
 
 ### SDK upgrades
 
-The following commands upgrade to published version 0.4.0. For another release, verify the published version and release notes before replacing the version number.
+The following commands upgrade to published version 0.5.0. For another release, verify the published version and release notes before replacing the version number.
 
 ```sh
-npm install @kue-qa/react-native@0.4.0
+npm install @kue-qa/react-native@0.5.0
 ```
 
 To upgrade the SDK with the CLI, specify the target version. Existing connection configuration is reused. Add `--reconnect` only when retrieving configuration again.
 
 ```sh
-npx kue-qa@0.4.0 init
+npx kue-qa@0.5.0 init
 ```
 
 The CLI uses the SDK at its own version. CLI 0.3.4 and later refuse implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
 
-When upgrading from 0.3.x to 0.4.0, `Kue` requires `cloud` or `onSubmit`; omitting both is a type error. With `onSubmit` or `onSubmitGroup`, also set `submitLabel`. Applications integrated by the CLI already pass `cloud` and need no change. Replace `interface … extends KueProps` with a type alias such as `type Props = KueProps & { … }`.
+After upgrading from 0.4.x to 0.5.0, devices that do not prefer Japanese over English show the KUE screens in English. To keep Japanese on every device, set `locale="ja"`.
+
+When upgrading from 0.3.x, `Kue` requires `cloud` or `onSubmit`; omitting both is a type error. With `onSubmit` or `onSubmitGroup`, also set `submitLabel`. Applications integrated by the CLI already pass `cloud` and need no change. Replace `interface … extends KueProps` with a type alias such as `type Props = KueProps & { … }`.
 
 Rebuild the development client after changing native dependencies and verify capture and submission on a physical device. Manage dependency versions through the application's lockfile.
 
@@ -620,7 +633,7 @@ Verify the Cloud URL and project key in the build environment that embeds them i
 
 After rotating a key or recreating a project, update each build environment, rebuild the app, and distribute the new build. Do not substitute a key belonging to a different repository. Existing queued entries are not automatically migrated to the new key.
 
-Completing CLI 0.4.0 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
+Completing CLI 0.5.0 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
 
 ### Symptoms and checks
 

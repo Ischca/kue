@@ -7,15 +7,16 @@ This repository contains the MIT-licensed SDK and setup CLI only. KUE Cloud is a
 separately operated service; its server code, configuration and credentials are
 not part of this repository.
 
-Version 0.4.0 puts Add finding and Create Issue on the finding screen. Create Issue
-sends the current finding, or confirms a title for it together with the saved
-findings. A tap always captures; when the draft is full or its send result is
-unconfirmed, the new finding goes alone and Open saved findings shows the draft.
-The long-press menu lists only what a tap cannot do, each item named beside its
-button. `KueProps` now requires `cloud` or `onSubmit`, and `submitLabel` with a
-custom handler. The release also fixes missing images in grouped findings and the
-offline queue on Expo SDK 56 and later, and Screen recording not starting from the
-long-press menu.
+Version 0.5.0 shows the KUE screens in Japanese or English, following the
+device's preferred languages; `locale` fixes the display language. After
+upgrading from 0.4.x, devices that do not prefer Japanese over English show English.
+
+The finding screen offers Add finding and Create Issue. Create Issue sends the
+current finding, or confirms a title for it together with the saved findings. A
+tap always captures; when the draft is full or its send result is unconfirmed,
+the new finding goes alone and Saved findings shows the draft. The long-press
+menu lists only what a tap cannot do, each item named beside its button.
+`KueProps` requires `cloud` or `onSubmit`, and `submitLabel` with a custom handler.
 
 Optional silent native screen recording and mixed video/image submission require
 an active Indie workspace, a recording-capable build and Cloud with video
@@ -51,7 +52,7 @@ only in development by default. Web capture is not supported.
 
 ## Release status
 
-SDK and CLI version `0.4.0` are available on npm with the `latest` tag:
+SDK and CLI version `0.5.0` are available on npm with the `latest` tag:
 [@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
 [kue-qa](https://www.npmjs.com/package/kue-qa).
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
