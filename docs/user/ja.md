@@ -212,6 +212,8 @@ export default function RootLayout() {
 <Kue cloud={cloud} buttonDesign="mascot" />
 ```
 
+![既定のファインダー形のKUEボタン（左）と、キャラクターのKUEボタン（右）](images/button-designs.webp)
+
 | 操作 | 結果 |
 | --- | --- |
 | タップ | キャプチャを開始 |

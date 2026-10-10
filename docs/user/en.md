@@ -214,6 +214,8 @@ The default is a viewfinder button. Set `buttonDesign="mascot"` to display the c
 <Kue cloud={cloud} buttonDesign="mascot" />
 ```
 
+![The default viewfinder KUE button (left) and the character KUE button (right)](images/button-designs.webp)
+
 | Action | Result |
 | --- | --- |
 | Tap | Start a capture |
