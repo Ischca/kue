@@ -2,7 +2,7 @@
 
 KUEはExpo、ネイティブiOS／Android、Flutter、Expoを使用しないReact Nativeアプリに画面キャプチャ、範囲選択、メモ入力を組み込むSDKです。レポートの送信先には、GitHub Issueを作成するKUE Cloud、またはアプリ側の保存処理を指定します。
 
-対象バージョン: SDK・CLI **0.6.0**（公開準備中）。0.6.0のパッケージ、タグ、Release assetが公開されるまでは、この版の導入コマンドは利用できません。Expo SDK・CLI 0.6.0のnpm公開は確認済みです。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
+対象バージョン: SDK・CLI **0.6.0**。Expo・ExpoなしReact NativeのパッケージとCLIはnpm、Flutter core・recorderはpub.devで配布しています。ネイティブSDKは対応する`v0.6.0`のSwift PackageタグまたはGitHub Releaseアーカイブを使用します。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
 
 ## 動作要件
 
@@ -443,7 +443,7 @@ Flutter 3.32以降、Dart 3.8以降、iOS 15以降またはAndroid API 26以降�
 flutter pub add kue_qa:0.6.0
 ```
 
-coreプラグインは必須です。Flutterはpub依存とネイティブビルドを使用し、Expo用CLIのセットアップコマンドでは初期化しません。
+coreプラグインは必須です。Flutterはpub依存とネイティブビルドを使用し、Expo用CLIのセットアップコマンドでは初期化しません。公開パッケージ: [kue_qa 0.6.0](https://pub.dev/packages/kue_qa/versions/0.6.0)、[kue_qa_recorder 0.6.0](https://pub.dev/packages/kue_qa_recorder/versions/0.6.0)。
 
 ### Flutterのネイティブビルド設定
 
@@ -565,7 +565,7 @@ KUE自体を除く場合はKueHostとcore依存を削除します。hostを外�
 
 ### APIリファレンス
 
-[Flutter API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/README.md)
+[Flutter APIリファレンス](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/API.md)
 
 ## ExpoなしReact Native
 
@@ -1057,7 +1057,7 @@ CDN、ブラウザ、GitHubのキャッシュにより、表示の更新に時�
 
 ### Expo SDKの更新
 
-公開準備中の0.6.0を対象とする例です。公開を確認してから実行してください。別のバージョンを使用する場合は、公開済みバージョンと変更履歴を確認してから、バージョン番号を置き換えます。
+次のコマンドはExpo SDKとCLIを公開済みの0.6.0へ更新します。別のバージョンを使用する場合は、公開済みバージョンと変更履歴を確認してから、バージョン番号を置き換えます。
 
 ```sh
 npm install @kue-qa/react-native@0.6.0

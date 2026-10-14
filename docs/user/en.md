@@ -2,7 +2,7 @@
 
 KUE adds screen capture, cropping, and memo entry to Expo, native iOS/Android, Flutter, and React Native apps without Expo. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Target version: SDK and CLI **0.6.0** (release preparation). Installation commands for this version are unavailable until the packages, tag, and Release assets are published. Expo SDK and CLI 0.6.0 have been verified on npm. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
+Target version: SDK and CLI **0.6.0**. Expo and Expo-free React Native packages and the CLI are distributed on npm; Flutter core and recorder are distributed on pub.dev. Native SDKs use the matching `v0.6.0` Swift Package tag or GitHub Release archives. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
@@ -443,7 +443,7 @@ Flutter 3.32+ / Dart 3.8+, iOS 15+ or Android API 26+ are required. The checked 
 flutter pub add kue_qa:0.6.0
 ```
 
-The core plugin is required. Flutter uses pub dependencies and native builds; the Expo CLI setup command does not initialize a Flutter app.
+The core plugin is required. Flutter uses pub dependencies and native builds; the Expo CLI setup command does not initialize a Flutter app. Published packages: [kue_qa 0.6.0](https://pub.dev/packages/kue_qa/versions/0.6.0) and [kue_qa_recorder 0.6.0](https://pub.dev/packages/kue_qa_recorder/versions/0.6.0).
 
 ### Configure Flutter native builds
 
@@ -565,7 +565,7 @@ Remove KueHost and the core dependency to remove KUE. Removing a host does not d
 
 ### API reference
 
-[Flutter API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/README.md)
+[Flutter API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/API.md)
 
 ## React Native without Expo
 
@@ -1057,7 +1057,7 @@ Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privac
 
 ### Expo SDK upgrades
 
-The following commands target version 0.6.0, currently in release preparation. Verify publication before running them. For another release, verify the published version and release notes before replacing the version number.
+The following commands upgrade the Expo SDK and CLI to published version 0.6.0. For another release, verify the published version and release notes before replacing the version number.
 
 ```sh
 npm install @kue-qa/react-native@0.6.0

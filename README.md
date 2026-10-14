@@ -21,7 +21,7 @@ Optional silent native screen recording and mixed video/image submission require
 an active Indie workspace, a recording-capable build and Cloud with video
 admission enabled. Free keeps a visible locked action.
 During recording, tap the red-square KUE button to stop and review locally.
-The CLI resolves default `auto` recording inclusion from the
+For Expo apps, the CLI resolves default `auto` recording inclusion from the
 workspace plan, supports an explicit `off`, and saves deterministic build settings.
 This selection does not enable recording or grant runtime entitlement by itself.
 For a custom wrapper, the CLI's `--skip-integration` manages these
@@ -45,7 +45,7 @@ published SDK/CLI and Cloud features.
 | Expo SDK 54–57 | [@kue-qa/react-native](packages/react-native/README.md), [kue-qa setup CLI](packages/cli/README.md) | npm |
 | iOS 15+, SwiftUI/UIKit | [Kue / optional KueRecorder](packages/ios/README.md) | Swift Package tag `v0.6.0`; release ZIP for local CocoaPods |
 | Android API 26+, Views/Compose | [KUE Android](packages/android/README.md) | [Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
-| Flutter 3.32+, Dart 3.8+ | [kue_qa](packages/flutter/README.md), [optional recorder](packages/flutter-recorder/README.md) | pub.dev |
+| Flutter 3.32+, Dart 3.8+ | [kue_qa](packages/flutter/README.md), [optional recorder](packages/flutter-recorder/README.md) | [pub.dev core](https://pub.dev/packages/kue_qa/versions/0.6.0), [recorder](https://pub.dev/packages/kue_qa_recorder/versions/0.6.0) |
 | React Native 0.86.2 / React 19.2.3, New Architecture | [@kue-qa/react-native-bare](packages/react-native-bare/README.md), [optional recorder](packages/react-native-bare-recorder/README.md) | npm |
 
 The CLI requires Node.js 22.13 or newer and configures Expo applications.
@@ -55,8 +55,10 @@ core copies when using the Flutter or Expo-free React Native packages.
 
 ## Release status
 
-SDKs and CLI version `0.6.0` are being prepared for release. Availability is confirmed separately
-for npm, pub.dev, the Swift Package tag and the GitHub Release archives.
+SDKs and CLI version `0.6.0` are available. Expo, Expo-free React Native and CLI
+packages are distributed on npm; Flutter core and recorder are on pub.dev. Native
+iOS uses the `v0.6.0` Swift Package tag or release ZIP; native Android uses the
+[Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0).
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
 Cloud requires the KUE QA GitHub App on the destination repository. SDK usage
 with your own callback does not require the App or a Cloud account. Recording
