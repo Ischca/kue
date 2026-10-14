@@ -1,0 +1,15 @@
+# KUE Android recorder
+
+Optional screen-recording implementation for the native Android SDK. Android API 26+, Kotlin/JVM 17, compile SDK 36. [日本語の導入手順](./README.ja.md)
+
+Download and verify the [0.6.0 GitHub Release Maven ZIP](https://github.com/Ischca/kue/releases/tag/v0.6.0), then follow the [core installation procedure](../android/README.md#install). Add `implementation("dev.kue.qa:kue-android-recorder:0.6.0")`; its POM resolves `dev.kue.qa:kue-android:0.6.0`. These coordinates are not on Maven Central. Removing this dependency and rebuilding removes recorder native pieces; runtime OFF alone does not.
+
+Including this artifact adds a non-exported consent Activity and a non-exported media-projection foreground service, plus `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PROJECTION`. Excluding it removes all those pieces; runtime OFF alone does not. The provider is discovered by the base SDK through a fixed class name; supplied consumer rules preserve it under R8.
+
+Every session obtains fresh user consent before starting the foreground service. The service calls `startForeground` before `getMediaProjection`, registers its projection callback before creating one virtual display, and uses silent surface H.264/MP4 recording without microphone/audio permissions. Capture covers the default display, including system bars. On Android 14+, `MediaProjectionConfig.createConfigForDefaultDisplay()` requests whole-display consent instead of an app picker, preserving the existing host Activity and its controller. No host launch-mode change or `onActivityResult` hook is required. Capture stops when that host leaves the foreground; it does not continue to record another app. Device manufacturers can override the system's capture-choice policy. Encoder dimensions are even and capped at 1920 pixels on the longest edge. Size/aspect changes may be letterboxed by Android; captured output dimensions describe the encoded surface, not a dynamic crop.
+
+The service stops at 59.5 seconds or 18 MiB and validates the finished MP4 at 1–60000 ms/20 MiB, with cleanup on error/cancel. It supports the in-app stop button and foreground notification Stop. Stopping on host foreground interruption returns a preview only after the host resumes. Cancelling/removing the host deletes the uncommitted recording. No audio track, background upload or automatic report submission is added.
+
+Recording additionally requires current Cloud Indie entitlement, Cloud recorder availability and a group destination. Free lock, server unavailable, failed verification and absent-module/rebuild messages are separate. The base SDK owns review/memo/group submission; this artifact only returns a cache-owned completed video. Verify actual MediaProjection consent/stop/container admission on the target device; compilation alone cannot verify capture or sound/track absence.
+
+Reference APIs: [Android MediaProjection](https://developer.android.com/media/grow/media-projection), [media-projection foreground-service requirements](https://developer.android.com/develop/background-work/services/fgs/service-types#media-projection).

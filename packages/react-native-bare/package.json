@@ -1,0 +1,64 @@
+{
+  "name": "@kue-qa/react-native-bare",
+  "version": "0.6.0",
+  "private": false,
+  "description": "KUE reporting integration for React Native without Expo.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "react-native": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "19.2.3",
+    "react-native": "0.86.2"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3",
+    "vitest": "4.1.11"
+  },
+  "codegenConfig": {
+    "name": "KueBareSpec",
+    "type": "all",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "dev.kue.qa.reactnative"
+    },
+    "ios": {
+      "modulesProvider": {
+        "NativeKue": "KueTurboModule"
+      },
+      "componentProvider": {
+        "KueHostAnchor": "KueHostAnchorComponentView"
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ischca/kue.git",
+    "directory": "packages/react-native-bare"
+  },
+  "files": [
+    "dist",
+    "src",
+    "android/src/main",
+    "android/build.gradle.kts",
+    "android/consumer-rules.pro",
+    "ios",
+    "*.podspec",
+    "react-native.config.cjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
+  "homepage": "https://kue.ischca.dev/docs"
+}

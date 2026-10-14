@@ -1,16 +1,20 @@
 # KUE ドキュメント
 
-KUEはExpo / React Nativeアプリに画面キャプチャ、範囲選択、メモ入力を組み込むSDKです。レポートの送信先には、GitHub Issueを作成するKUE Cloud、またはアプリ側の保存処理を指定します。
+KUEはExpo、ネイティブiOS／Android、Flutter、Expoを使用しないReact Nativeアプリに画面キャプチャ、範囲選択、メモ入力を組み込むSDKです。レポートの送信先には、GitHub Issueを作成するKUE Cloud、またはアプリ側の保存処理を指定します。
 
-対象バージョン: SDK・CLI **0.5.0**。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
+対象バージョン: SDK・CLI **0.6.0**（公開準備中）。0.6.0のパッケージ、タグ、Release assetが公開されるまでは、この版の導入コマンドは利用できません。Expo SDK・CLI 0.6.0のnpm公開は確認済みです。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
 
 ## 動作要件
 
 | 項目 | 対応範囲 |
 | --- | --- |
-| アプリ | Expo SDK 54〜57 / React Native |
+| Expo SDK | Expo SDK 54〜57／iOS・Android。`@kue-qa/react-native` |
+| ネイティブiOS | UIKit／SwiftUI、iOS 15以上、Swift 5.9以上 |
+| ネイティブAndroid | Views／Compose、Android 8／API 26以上、Kotlin／JVM 17 |
+| Flutter | Flutter 3.32以上／Dart 3.8以上、iOS 15以上／Android API 26以上 |
+| ExpoなしReact Native | RN 0.86.2、React 19.2.3、New Architecture、iOS 15.1以上／Android API 26以上 |
 | OS | iOS・Android。Webの画面キャプチャは非対応 |
-| CLI | Node.js 22.13以上 |
+| CLI | Node.js 22.13以上。自動セットアップはExpoアプリのみ |
 | ライセンス | SDK・CLI: MIT。Cloud: 別途提供するホステッドサービス |
 
 Expo SDK 57のアプリをXcode 27（iOS 27 SDK）でビルドする場合は、`expo@57.0.23`以降を使用し、`expo-build-properties`の`ios.enableSceneSupport`を`true`に設定してiOSプロジェクトを再生成します。この設定なしでiOS 27 SDKを使ってビルドしたアプリは、iOS 27で起動できません。
@@ -19,20 +23,22 @@ Cloudと連携するには、GitHubアカウントと、送信先リポジトリ
 
 `onSubmit` による独自保存はCloudアカウントなしで利用できます。
 
-## CLIによるセットアップ
+## ExpoのCLIセットアップ
+
+CLIの自動検出・依存追加・JSX編集・録画の組み込み設定はExpo専用です。ネイティブ、Flutter、ExpoなしReact Nativeには、各SDKの手順で直接導入してください。
 
 ### 実行手順
 
 アプリの変更を保存してから、Expoアプリのパッケージまたはワークスペースのルートで次のコマンドを実行します。
 
 ```sh
-npx kue-qa init
+npx kue-qa@0.6.0 init
 ```
 
 現在のパッケージに `expo` の依存関係があれば、CLIはそのパッケージを使用します。それ以外の場合は `pnpm-workspace.yaml` の `packages`、または `package.json` の `workspaces` からExpoアプリを検出します。両方ある場合はpnpmの定義を優先します。候補が1つなら自動で選択し、複数なら候補を表示して変更せずに終了します。対象を選ぶ場合は次のように指定します。
 
 ```sh
-npx kue-qa init --app apps/mobile
+npx kue-qa@0.6.0 init --app apps/mobile
 ```
 
 自動探索は実行ディレクトリ内に限定します。隠しディレクトリとシンボリックリンクは探索しません。`node_modules`、`vendor`、`build`、`dist`、`coverage`、`ios`、`android` も探索しません。探索範囲が2,000ディレクトリを超える場合やワークスペースの定義がない場合は、`--app` を指定するかアプリ内で実行します。`--app` には、実行ディレクトリ内にあり、リンクでないディレクトリを指定します。
@@ -106,7 +112,7 @@ GitHubユーザートークンや課金用の認証情報をアプリへ保存�
 
 ### 手動配置を維持するセットアップ
 
-CLI 0.5.0では、独自のラッパーなどで既に `Kue` を配置しているアプリに `--skip-integration` を指定できます。CLIはJSXを読み書きせず、接続設定、依存関係、録画のビルド設定だけを管理します。`--skip-integration` は `--root` と併用できません。
+CLI 0.6.0では、独自のラッパーなどで既に `Kue` を配置しているアプリに `--skip-integration` を指定できます。CLIはJSXを読み書きせず、接続設定、依存関係、録画のビルド設定だけを管理します。`--skip-integration` は `--root` と併用できません。
 
 ```sh
 kue-qa init --skip-integration
@@ -117,14 +123,14 @@ kue-qa init --skip-integration --reconnect
 
 新しいCLIがSDKを更新した後は、差分を確認して、アプリの既存の手順でビルドと配信を行います。録画の組み込みが変わった場合はネイティブの再ビルドが必要です。CLIはビルドやTestFlight／Google Playへの配信を開始しません。
 
-## SDKの手動導入
+## Expo SDKの手動導入
 
 ### パッケージの追加
 
-SDK 0.5.0を導入します。アプリの既存のパッケージマネージャーを使用し、lockfileの形式を統一します。
+SDK 0.6.0を導入します。アプリの既存のパッケージマネージャーを使用し、lockfileの形式を統一します。
 
 ```sh
-npm install @kue-qa/react-native@0.5.0
+npm install @kue-qa/react-native@0.6.0
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
 ```
 
@@ -187,7 +193,463 @@ export default function RootLayout() {
 | `context` | 端末・アプリのメタ情報 |
 | `capturedAt` | キャプチャ日時 |
 
-## キャプチャとIssue作成
+## ネイティブiOS
+
+スクリーンショット編集、保存した指摘のグループ確認、任意の録画、Cloud送信、単独画像の永続キュー、追加トリガーを提供します。ローカル保存またはCloudを指定します。
+
+### ネイティブiOSの導入
+
+iOS 15以上、Swift 5.9以上のUIKitまたはSwiftUIアプリを対象とします。アプリのウィンドウごとに1つの `KueController` を保持します。サードパーティーSDKの依存関係はありません。既定ではDebugで有効、Releaseで無効です。以下の例では両ビルドで使用するため `enabled: true` を明示します。
+
+Xcodeの **File → Add Package Dependencies** で `https://github.com/Ischca/kue.git` を指定し、**Exact Version** を `0.6.0` にします。アプリのターゲットへ `Kue` 製品を追加します。Swiftパッケージから参照する場合は次の依存関係を使用します。
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/Ischca/kue.git", exact: "0.6.0")
+],
+targets: [
+    .target(name: "YourApp", dependencies: [.product(name: "Kue", package: "kue")])
+]
+```
+
+CocoaPodsではGitHub Releaseの `kue-ios-0.6.0.zip` と公開されたSHA-256を取得して確認し、アプリのリポジトリの `vendor` に展開します。`vendor/kue-ios` に `Package.swift`、`Sources`、両podspecがあることを確認します。Podfileが `vendor` と同じ階層にある場合は次のように指定します。
+
+```ruby
+platform :ios, '15.0'
+
+target 'YourApp' do
+  pod 'Kue', :path => './vendor/kue-ios'
+  # Optional native recording:
+  # pod 'KueRecorder', :path => './vendor/kue-ios'
+end
+```
+
+`pod install` を実行し、生成された `.xcworkspace` を開きます。参照先のソースディレクトリを保持してください。この手順はCocoaPods Trunkを使用しません。Swift PackageとFlutter/RNパッケージに含まれるネイティブCoreを重複してリンクしないでください。Git URLからの導入には `v0.6.0` タグ、ZIPからの導入には対応するRelease assetの公開が必要です。
+
+### SwiftUIへの組み込み
+
+コントローラーを `@StateObject` の所有者に保持し、`KueHost` を画面へ追加します。次の最小アプリでは、明示的な保存後のメモを画面に表示します。ローカル結果はメモリ上に保持され、永続化はアプリ側で実装します。
+
+```swift
+import SwiftUI
+import Kue
+
+@MainActor final class FeedbackSession: ObservableObject {
+    @Published var lastMemo = ""
+    lazy var kue = KueController(
+        destination: .local(submitLabel: "Save", onSubmit: { [weak self] report in
+            self?.lastMemo = report.memo
+        }),
+        enabled: true
+    )
+}
+
+@main struct FeedbackApp: App {
+    var body: some Scene { WindowGroup { FeedbackScreen() } }
+}
+
+@MainActor struct FeedbackScreen: View {
+    @StateObject private var session = FeedbackSession()
+    var body: some View {
+        VStack {
+            Text(session.lastMemo)
+            Button("Report") {
+                try? session.kue.reportIssue(memo: "Check this screen")
+            }
+        }.background(KueHost(session.kue).frame(width: 0, height: 0))
+    }
+}
+```
+
+### UIKitへの組み込み
+
+画面またはウィンドウの所有者にコントローラーを保持し、ビューがウィンドウへ入った後に `attach(to:)` を呼びます。SDKの編集画面が表示されるだけで `detach()` を呼ばず、組み込みまたはウィンドウを削除するときに呼びます。
+
+```swift
+import UIKit
+import Kue
+
+@MainActor final class FeedbackViewController: UIViewController {
+    private let result = UILabel()
+    private lazy var kue = KueController(
+        destination: .local(submitLabel: "Save", onSubmit: { [weak self] report in
+            self?.result.text = report.memo
+        }),
+        enabled: true
+    )
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        result.frame = CGRect(x: 24, y: 100, width: 280, height: 80)
+        view.addSubview(result)
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if let window = view.window { kue.attach(to: window) }
+    }
+    func removeFeedbackIntegration() { kue.detach() }
+}
+```
+
+### ネイティブiOSのキャプチャと録画
+
+浮動ボタンをタップするか `try kue.reportIssue(memo: "Check this screen")` を呼ぶと、スクリーンショット編集を開始します。この呼び出しは提出完了を待ちません。範囲と必須メモを確認して保存・送信します。`onCaptureFinished` はキャプチャ完了、`onReportOutcome` はその画面からの保存・キュー・指摘追加・キャンセルを通知します。ローカルcallbackは保存先をアプリ側で実装し、Cloud設定ではHTTPS originとプロジェクトキーを使用します。キー、メディア、メモ、receipt tokenをログへ記録しないでください。
+
+`Kue` のみをリンクしたビルドにはReplayKit録画の実装が含まれません。録画を使う場合は `KueRecorder` 製品またはpodも追加し、プロバイダーを渡します。次のURLとキーは例示用です。
+
+```swift
+import Kue
+import KueRecorder
+
+let config = try KueCloudConfiguration(
+    apiBaseURL: "https://kue.example.test",
+    projectKey: "pk_example_project_key"
+)
+let kue = KueController(
+    destination: .cloud(config),
+    enabled: true,
+    recorder: KueReplayKitRecorder()
+)
+```
+
+録画にはCloudのプラン確認、グループ提出先、対応するネイティブプロバイダー、端末の利用可否とシステムの許可が必要です。停止後にプレビューと必須メモを確認し、指摘へ追加します。録画は最大60秒・20 MiBの音声なしH.264 MP4です。画像と動画を合わせたグループは最大10件・合計20 MiBで、明示確認後に提出します。`recording = .off` は実行時の無効化であり、モジュールの除去には製品・podの削除と再ビルドが必要です。
+
+`offlineQueue` は既定で無効です。有効なCloud単一画像のキューは最大10件・50 MiB・7日で、フォアグラウンドの待機中に再試行します。グループ・動画は永続キューに入りません。HTTP 202 receiptは受理を表し、Issue作成の完了ではありません。`readReportStatus(_:)` でreceipt tokenを使って状態を明示的に取得します。`detach()` はSDKの処理と画面、メモリ上の指摘を解放しますが、永続キューは必要に応じて別途破棄します。
+
+### APIリファレンス
+
+写真ライブラリやマイクの使用許可は要求しません。録画はOSの同意で開始します。追加のシェイク／OSスクリーンショット検知は明示的に有効化し、保存済み写真を読み取りません。取り除く場合は `detach()` で解除し、製品またはpodを削除して再ビルドします。必要な送信待ちの提出・破棄は削除前に行います。
+
+[API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/ios/README.md)
+
+## ネイティブAndroid
+
+スクリーンショット編集、保存した指摘のグループ確認、任意の録画、Cloud送信、単独画像の永続キュー、追加トリガーを提供します。ローカル保存コールバックは該当するCloud送信より優先されます。
+
+### ネイティブAndroidの導入
+
+Android 8／API 26以上、フォアグラウンドのActivity、Kotlin／JVM 17を必要とします。参考アプリはcompile／target SDK 36、AGP 8.13.2、Kotlin 2.1.20を使用します。ViewsとComposeは同じネイティブコントローラーを使用します。Androidの配布物はGitHub ReleaseのMaven ZIPです。Maven Centralの配布座標ではありません。
+
+アプリのルートでZIPとSHA-256ファイルを取得し、検証して解凍します。
+
+```sh
+curl --fail --location --output kue-android-maven-0.6.0.zip \
+  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip
+curl --fail --location --output kue-android-maven-0.6.0.zip.sha256 \
+  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip.sha256
+shasum -a 256 -c kue-android-maven-0.6.0.zip.sha256
+unzip kue-android-maven-0.6.0.zip -d vendor/kue
+```
+
+AAR、POM、Gradleメタデータ、ソース、MITライセンスを含む`vendor/kue/android-maven`をまとめて保持してください。SDKソースのcheckoutや公開者の認証情報は不要です。`settings.gradle.kts`にローカルリポジトリを追加します。
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url = uri("vendor/kue/android-maven")
+            content { includeGroup("dev.kue.qa") }
+        }
+        google()
+        mavenCentral()
+    }
+}
+```
+
+アプリモジュールに依存を追加し、Gradleを同期します。
+
+```kotlin
+dependencies {
+    implementation("dev.kue.qa:kue-android:0.6.0")
+    // Optional: omit this dependency to exclude native screen recording.
+    implementation("dev.kue.qa:kue-android-recorder:0.6.0")
+}
+```
+
+POMは標準リポジトリからKotlinとOkHttpを解決します。recorderは同じ版のcoreを推移的に解決し、リソース、非exportedの同意Activity／media-projection service、foreground service権限、R8ルールを含みます。coreはInternetとスクリーンショット検知用権限を追加します。写真ライブラリやマイクへのアクセスは要求しません。録画用ネイティブ機能を除外するにはrecorder依存を削除して再ビルドします。実行時の録画OFFだけでは除外されません。
+
+### Viewsへの取り付け
+
+メインスレッドで`setContentView`の後に取り付けます。キーのプレースホルダーをプロジェクトの送信キーに置き換えてください。浮動ボタンはSDKが管理し、Activity破棄時に解除します。
+
+```kotlin
+import android.app.Activity
+import android.os.Bundle
+import android.widget.TextView
+import dev.ischca.kue.Kue
+import dev.ischca.kue.KueCloudConfig
+import dev.ischca.kue.KueConfig
+
+class MainActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(TextView(this).apply { text = "Example" })
+        Kue.install(this, KueConfig(
+            enabled = true,
+            cloud = KueCloudConfig("https://kue.ischca.dev", "pk_REPLACE_WITH_PROJECT_KEY"),
+        ))
+    }
+}
+```
+
+### Composeへの取り付け
+
+再コンポジションごとではなく、Activityの`setContent`の後に1回取り付けます。
+
+```kotlin
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.Text
+import dev.ischca.kue.Kue
+import dev.ischca.kue.KueCloudConfig
+import dev.ischca.kue.KueConfig
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { Text("Example") }
+        Kue.install(this, KueConfig(
+            enabled = true,
+            cloud = KueCloudConfig("https://kue.ischca.dev", "pk_REPLACE_WITH_PROJECT_KEY"),
+        ))
+    }
+}
+```
+
+`enabled`を省略した場合、デバッグ可能なアプリでのみ既定で有効です。この例ではReleaseを含めて明示的に有効化しています。録画には任意のrecorder、AUTOモード、CloudのIndie権限、サービス可用性、グループ送信先、毎回のOS同意を必要とします。最大60秒／20MiBの無音H.264／MP4を録画し、動画は明示的に確認したグループとして送信します。依存の追加だけで録画や送信を開始することはありません。
+
+### アップグレードと削除
+
+対応するリリースのリポジトリを解凍し、coreとrecorderの版をそろえます。ソースモジュールとAARを重複して導入しないでください。取り除く場合はコントローラーを解除し、依存を削除して再ビルドします。参照がなくなった後にvendorディレクトリを削除できます。Maven公開者の認証情報や、ホストActivityの結果通知・launch modeの追加設定は不要です。
+
+### APIリファレンス
+
+ローカル保存は `KueConfig.onSubmit(report, complete)`、グループ保存は独立した `onSubmitGroup(group, complete)` で指定し、表示ラベルを設定します。アプリ側で保存が完了してから `complete(Result.success(Unit))` を1回だけ返します。グループを単独コールバックへ分割して送信することはありません。追加のシェイク／OSスクリーンショット検知は明示的に有効化し、写真ライブラリを読み取りません。 `controller.reportIssue(memo, context)` はキャプチャを開始できた場合に `true`、無効・未使用可能・操作中の場合に `false` を返し、提出完了を待ちません。必須メモ、範囲、保存先を確認して明示的に送信します。`openSavedFindings()`、`recordScreen()`、`openOutbox()` と状態通知の詳細はAPIリファレンスを参照してください。
+
+[API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/android/README.md)
+
+## Flutter
+
+Flutterの撮影アダプターとネイティブ編集画面を組み合わせ、浮動ボタン、指摘のグループ確認、任意の録画、追加トリガー、Cloud送信、単独画像の永続キューを提供します。
+
+### Flutterの要件
+
+Flutter 3.32以降、Dart 3.8以降、iOS 15以降またはAndroid API 26以降が必要です。確認済みのFlutter環境は3.32.5 / Dart 3.8.1です。Androidはcompile SDK 36、JDK 17と互換性のあるGradle/AGP/Kotlinを使用し、参照バージョンはGradle 8.13 / AGP 8.10.1 / Kotlin 2.1.20です。iOSはCocoaPodsを使用します。パッケージにネイティブ実装を同梱し、Flutterのplugin loaderを使います。
+
+### Flutter coreの導入
+
+```sh
+flutter pub add kue_qa:0.6.0
+```
+
+coreプラグインは必須です。Flutterはpub依存とネイティブビルドを使用し、Expo用CLIのセットアップコマンドでは初期化しません。
+
+### Flutterのネイティブビルド設定
+
+iOSはPodfileのplatformとRunnerのdeployment targetを15.0以降に設定します。Flutterからビルドし、プラグイン登録とPodsを更新します。embeddingが既にUISceneを管理している場合は、その設定を維持します。Sceneが必須のSDKで確認済みFlutter 3.32 embeddingを使う場合は、導入したcoreパッケージの`integration/ios/KueFlutterSceneDelegate.swift`をRunnerに追加します。`UIApplicationSceneManifest`に1つのapplication sceneを設定し、delegateを`$(PRODUCT_MODULE_NAME).KueFlutterSceneDelegate`にします。AppDelegateはFlutterAppDelegateを継承し、テンプレートの`GeneratedPluginRegistrant.register(with: self)`を削除します。Sceneが実際のcontrollerに1回だけ登録し、2つ目のengineは作成しません。
+
+このFlutter 3.32設定では、プラグインへのリンクを生成して同梱Sceneファイルをコピーします。
+
+```sh
+flutter build ios --debug --config-only --no-codesign
+(cd ios && pod install)
+cp ios/.symlinks/plugins/kue_qa/integration/ios/KueFlutterSceneDelegate.swift ios/Runner/
+```
+
+XcodeでコピーしたSwiftファイルをRunner targetに追加し、RunnerのInfo.plistに次を追加します。
+
+```xml
+<key>UIApplicationSceneManifest</key>
+<dict>
+  <key>UIApplicationSupportsMultipleScenes</key>
+  <false/>
+  <key>UISceneConfigurations</key>
+  <dict>
+    <key>UIWindowSceneSessionRoleApplication</key>
+    <array>
+      <dict>
+        <key>UISceneConfigurationName</key>
+        <string>Default Configuration</string>
+        <key>UISceneDelegateClassName</key>
+        <string>$(PRODUCT_MODULE_NAME).KueFlutterSceneDelegate</string>
+      </dict>
+    </array>
+  </dict>
+</dict>
+```
+
+AndroidはappのminSdkを26、compileSdkを36に設定し、JDK 17と上記の互換Gradle/AGP/Kotlinを使用します。Flutterのplugin loaderがcoreと任意のrecorderをリンクします。どちらのプラットフォームも、同じネイティブKue pod/projectを重複追加しないでください。ネイティブ依存を変更したら再ビルドします。
+
+### KueHostの利用
+
+`MaterialApp.builder`でroot Navigatorの外側に1つのhostを配置します。安定したローカルコールバックと空でない保存ラベル、またはCloud設定を指定します。
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:kue_qa/kue_qa.dart';
+
+final kue = KueController();
+final lastMemo = ValueNotifier<String>('No report saved');
+
+Future<void> saveLocal(KueLocalReport report) async {
+  lastMemo.value = report.memo;
+}
+
+void main() => runApp(MaterialApp(
+  builder: (context, child) => KueHost(
+    controller: kue,
+    onSubmit: saveLocal,
+    submitLabel: 'Save locally',
+    child: child!,
+  ),
+  home: Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () async {
+              await kue.reportIssue(memo: 'Inspect this screen');
+            },
+            child: const Text('Report issue'),
+          ),
+          ValueListenableBuilder<String>(
+            valueListenable: lastMemo,
+            builder: (context, value, child) => Text(value),
+          ),
+        ],
+      ),
+    ),
+  ),
+));
+```
+
+この例は最後のメモだけをメモリ内に保持し、外部送信やIssue作成を行いません。永続保存と重複防止は`clientReportId`を使用してコールバック側で実装します。変更不可の`imageBytes`、メモ、metadataを受け取り、コールバック完了をローカル保存完了とします。保存失敗時はネイティブ編集画面に残り、同じIDと内容で明示的に再試行できます。グループには独立した`onSubmitGroup`またはCloud送信先が必要で、指摘ごとに`onSubmit`を呼ぶ代替処理はありません。
+
+Cloud送信にはプロジェクトの接続設定からorigin/keyを取得し、偽の値を置き換えます。両方指定した場合はローカル`onSubmit`を優先します。
+
+```dart
+KueHost(
+  controller: kue,
+  cloud: const KueCloudConfig(
+    apiBaseUrl: 'https://cloud.example.test',
+    projectKey: 'pk_example_project',
+  ),
+  child: child!,
+);
+```
+
+`enabled`の既定値は`kDebugMode`で、Profile/Releaseでは明示的に有効化しない限り無効です。`reportIssue`は送信・キュー保存・指摘追加・キャンセル後に`Future<KueReportOutcome>`を返し、実行できない場合はbusy/disabledを返します。撮影失敗は型付きエラーになります。既定の撮影はFlutterのRepaintBoundaryを長辺2048ピクセルまでのPNGにします。ネイティブダイアログ、PlatformView、外部texture、保護された表示は保証せず、ネイティブウィンドウ撮影への代替は行いません。必要に応じて独自PNG撮影アダプターを指定します。
+
+### Flutterの任意録画モジュール
+
+```sh
+flutter pub add kue_qa_recorder:0.6.0
+```
+
+Dartでのrecorder importや初期化は不要です。両プラットフォームを再ビルドします。ローカルのグループコールバックで保存する場合も、グループ送信先、Cloud機能の権限・受付可否、OSの許可が必要です。音声なしH.264 MP4、60秒/20 MiB以下を使用します。ユーザーが動画を確認して必須メモを入力し、グループを明示的に確定します。動画の自動送信や、グループ/動画の永続outboxはありません。`recording: off`は実行時に停止しますが、コンパイル済みモジュールとAndroidのservice権限は残ります。
+
+### Flutter KUEの無効化・削除
+
+`enabled: false`でhostの連携を中断します。バイナリから録画を除く場合は依存を削除し、再ビルドします。
+
+```sh
+flutter pub remove kue_qa_recorder
+flutter pub get
+# On macOS for iOS:
+cd ios && pod install
+```
+
+KUE自体を除く場合はKueHostとcore依存を削除します。hostを外しても永続保存した送信待ち画像は削除しないため、削除が必要ならSDKを除く前に対象を明示的に破棄します。任意のCloud単体画像outboxは既定falseで、元の送信先に固定します。queueはローカル保存、HTTP 202は受付を示し、Issue作成完了を意味しません。
+
+### APIリファレンス
+
+[Flutter API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/README.md)
+
+## ExpoなしReact Native
+
+ネイティブの浮動ボタン、範囲／メモ編集、画像・動画のグループ確認、追加トリガー、Cloud送信、単独画像の永続キューを使用します。Expoパッケージとは別の導入手順です。
+
+### ExpoなしReact Nativeの要件
+
+対象はReact Native 0.86.2 / React 19.2.3のNew Architecture、iOS 15.1以降またはAndroid API 26以降、JDK 17、compile SDK 36です。別のReact Nativeバージョン、旧アーキテクチャ、Web、macOS、Windowsは対象外です。パッケージにネイティブcoreを同梱し、Expo依存、別のKue pod/Gradle project、非公開ソースの取得は不要です。
+
+### React Native coreの導入
+
+```sh
+npm install @kue-qa/react-native-bare@0.6.0
+cd ios
+bundle exec pod install
+```
+
+iOSのpodコマンドはmacOSで実行し、アプリで通常使うXcode/GradleまたはReact Native CLIのコマンドで再ビルドします。AutolinkingとCodegenがモジュールを登録します。Expo用セットアップCLIは使用しません。通常のDebugはMetro、Releaseは同梱JavaScript bundleを使用します。単独起動できるDebugアプリには、bundleの同梱と対応するAppDelegate設定が必要です。
+
+### Kueの配置と撮影
+
+アプリのルート付近にKueを1つ配置します。偽のorigin/keyをプロジェクトの接続設定に置き換えます。この例はReleaseでも明示的に有効化します。
+
+```tsx
+import { Kue } from "@kue-qa/react-native-bare";
+
+export function Feedback() {
+  return (
+    <Kue
+      enabled={true}
+      locale="en"
+      cloud={{
+        apiBaseUrl: "https://feedback.example.com",
+        projectKey: "pk_REPLACE_WITH_PROJECT_KEY",
+      }}
+    />
+  );
+}
+```
+
+hostを配置した後、アプリの操作からネイティブの画像編集画面を開けます。
+
+```tsx
+import { reportIssue } from "@kue-qa/react-native-bare";
+
+await reportIssue({
+  memo: "Check this flow",
+  context: { route: "/products/yirgacheffe" },
+});
+```
+
+編集画面を開いただけでは送信しません。reportIssueは撮影・表示後に`Promise<void>`を返し、その後の送信・キュー保存・キャンセル・指摘追加はonOutcomeで通知します。撮影・バックグラウンド移行による中断はPromiseをrejectします。既定はネイティブウィンドウ撮影で、保護された表示やネイティブ動画・Surfaceを撮影できない場合があります。
+
+ローカル保存にはCloud送信先の代わりに、安定したonSubmitと空でないsubmitLabelを指定します。両方ある場合はonSubmitを優先します。グループには独立したonSubmitGroupまたはCloud送信先が必要で、個別コールバックで代用しません。メディアURIは返したPromiseが完了するまで有効です。完了前にアップロードするかcopyKueMediaFileをawaitし、保持したコピーはアプリが管理します。コピー削除、独自撮影アダプター、型付き結果はパッケージのAPIリファレンスを参照してください。
+
+既定値はenabledが__DEV__、recordingがauto、フローティングボタンがtrueです。シェイク、OSスクリーンショットトリガー、offlineQueueはfalseです。言語はja/enを指定しない限り端末に従い、コールバック期限は30000 msです。Cloud、ハンドラ参照、撮影、独自トリガー、queue設定は配置中に固定します。安定したコールバックを使い、変更時はReactのkeyを変えて再配置します。
+
+### React Nativeの任意録画モジュール
+
+```sh
+npm install @kue-qa/react-native-bare-recorder@0.6.0
+cd ios
+bundle exec pod install
+```
+
+両プラットフォームを再ビルドします。recorderのimportやJavaScript初期化は不要です。ローカル保存でもグループ送信先、Cloud機能の権限・受付可否、OSの許可が必要です。音声なしH.264 MP4、60秒/20 MiB以下で、ユーザーが確認・必須メモ入力後にグループを明示的に確定します。マイク/カメラ権限や動画の自動送信はありません。
+
+### React Native KUEの無効化・削除
+
+enabled={false}で現在の操作を取り消します。録画コードとAndroid service権限を除く場合は任意パッケージを削除し、podを更新して再ビルドします。
+
+```sh
+npm uninstall @kue-qa/react-native-bare-recorder
+cd ios
+bundle exec pod install
+```
+
+recording="off"は実行時だけ無効化します。SDKを除く場合はKueとcore依存を削除します。永続保存した未送信画像はhostの削除後も残るため、削除が必要ならSDKを除く前に明示的に破棄します。任意のCloud画像outboxは送信先に固定し、グループ・動画は保存しません。HTTP 202は受付を示し、Issue作成完了を意味しません。
+
+### APIリファレンス
+
+[React Native API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/react-native-bare/README.md)
+
+## ExpoのキャプチャとIssue作成
 
 ### 操作手順
 
@@ -296,7 +758,7 @@ Issueには動画を開くリンクを記載します。動画のURLを知って
 
 ### 録画のビルド設定
 
-CLI 0.5.0は、録画モジュールの組み込み設定を管理します。
+CLI 0.6.0は、録画モジュールの組み込み設定を管理します。
 
 録画設定は対象アプリの `package.json` の `kue.recording` で指定します。既定値は `auto` です。`init` は接続先ワークスペースの利用権を確認します。Freeでは録画用ネイティブモジュールを除外し、Indieでは組み込み対象に設定します。`off` を指定した場合は、プランにかかわらず録画用ネイティブモジュールを除外します。スクリーンショット用の依存関係は除外しません。
 
@@ -321,7 +783,7 @@ kue-qa check
 配布ビルドの前に、対象アプリの管理対象設定を使って送信可否を確認します。
 
 ```sh
-npx kue-qa@0.5.0 check
+npx kue-qa@0.6.0 check
 ```
 
 `--app` は対象アプリを選択します。代わりに `--config project.json` でダッシュボードの設定JSON、または `--env` でビルド環境が解決済みの `EXPO_PUBLIC_KUE_MODE`、`EXPO_PUBLIC_KUE_API_BASE_URL`、`EXPO_PUBLIC_KUE_PROJECT_KEY` と任意の `EXPO_PUBLIC_KUE_ENABLED` を使用できます。これら3種類の設定入力は併用できません。キーをコマンド引数に直接指定しないでください。`--env` はdotenvを読み込まないため、Expo/EASのビルド環境で使用する値を先に解決します。
@@ -341,7 +803,7 @@ npx kue-qa@0.5.0 check
 
 `KueReportGroup.findings` は `KueFinding`（`KueLocalReport | KueVideoReport`）の配列です。`KueVideoReport` は `clientReportId`・`memo`・`context`・`capturedAt` と `video` を持ちます。`video` は `uri`・`width`・`height`・`durationMs`・`byteSize`・`mimeType: "video/mp4"`・`capturedAt` を持ちます。各メディアのURIは、送信が完了するまで有効な状態に保つ必要があります。カスタムの `onSubmit` を使用する場合、まとめ送信には別途 `onSubmitGroup` を指定します。下書きは作成時のハンドラーを保持します。再レンダーで別の関数が渡されても、既存の下書きがその関数へ移ることはありません。
 
-## SDK設定リファレンス
+## Expo SDK設定リファレンス
 
 ### KueProps
 
@@ -371,9 +833,9 @@ npx kue-qa@0.5.0 check
 
 | プロパティ | 必須・既定値 | 内容 |
 | --- | --- | --- |
-| `apiBaseUrl` | 必須 | CloudのベースURL。`/v1/reports` を含めない |
-| `projectKey` | 必須 | `pk_...` 形式のプロジェクトキー。投稿だけに使える公開情報 |
-| `timeoutMs` | 既定 `15000` | HTTPリクエストのタイムアウト（ミリ秒） |
+| `apiBaseUrl` | 必須 | 認証情報、パス、query、fragmentを含まないCloudのorigin。`/v1/reports` を付けない |
+| `projectKey` | 必須 | `pk_` に8〜128文字の英数字・`_`・`-`が続く公開プロジェクトキー。投稿とプロジェクト機能の照会に使用。管理権限やレポート閲覧権限ではない |
+| `timeoutMs` | 既定 `15000` | HTTPリクエストのタイムアウト（ミリ秒）。1〜120000の整数 |
 
 ### メタ情報
 
@@ -393,7 +855,7 @@ export function QaReporter({ cloud }: { cloud: KueCloudConfig }) {
 
 この例を使用する場合は、`Kue` を重複して配置しません。メタ情報は、自動取得値 → `context` → `reportIssue({ context })` の順に適用され、後の値が優先されます。URLクエリやユーザーIDではなく、匿名化したルートテンプレートを指定します。
 
-## 起動APIとトリガー
+## Expoの起動APIとトリガー
 
 ### reportIssue
 
@@ -435,7 +897,7 @@ const triggers = [shakeTrigger, screenshotTrigger];
 
 KUEは追加の権限を要求せず、アプリ内で共有されるセンサー間隔も変更しません。オプションのExpoモジュールは `ACTIVITY_RECOGNITION`、`READ_EXTERNAL_STORAGE`、`READ_MEDIA_IMAGES` を追加します。これらの権限は、アプリのほかの機能で不要な場合に限り `android.blockedPermissions` で除外できます。Android 14以降のスクリーンショット検知に必要な `DETECT_SCREEN_CAPTURE` は維持します。
 
-## オフラインキュー
+## Expoのオフラインキュー
 
 ### 有効化
 
@@ -593,18 +1055,18 @@ CDN、ブラウザ、GitHubのキャッシュにより、表示の更新に時�
 
 ## 更新とアンインストール
 
-### SDKの更新
+### Expo SDKの更新
 
-公開済みの0.5.0へ更新する例です。別のバージョンを使用する場合は、公開済みバージョンと変更履歴を確認してから、バージョン番号を置き換えます。
+公開準備中の0.6.0を対象とする例です。公開を確認してから実行してください。別のバージョンを使用する場合は、公開済みバージョンと変更履歴を確認してから、バージョン番号を置き換えます。
 
 ```sh
-npm install @kue-qa/react-native@0.5.0
+npm install @kue-qa/react-native@0.6.0
 ```
 
 CLIでSDKを更新する場合は、対象バージョンを指定します。CLIは既存の接続設定を再利用します。設定を再取得する場合だけ `--reconnect` を追加します。
 
 ```sh
-npx kue-qa@0.5.0 init
+npx kue-qa@0.6.0 init
 ```
 
 CLIは自身と同じバージョンのSDKを使用し、新しいSDKの暗黙のダウングレードは拒否します。変更がなければ `init` は何も書き換えません。更新時は差分を確認してください。更新コマンドを実行していない間に、SDKが自動で更新されることはありません。
@@ -621,13 +1083,13 @@ SDKのアンインストールでは、CloudプロジェクトやGitHub Issueは
 
 ## トラブルシューティング
 
-### ビルドと配布の接続設定
+### Expoのビルドと配布の接続設定
 
 Cloud送信用のURLとプロジェクトキーは、実際にアプリへ埋め込むビルド環境で確認します。ローカルの `.env.local` を変更しても、EAS側の環境変数や配布済みアプリは更新されません。ビルド環境に同名の環境変数が設定されている場合は、その環境変数がローカルファイルより優先されます。
 
 キーを再発行した場合やプロジェクトを作り直した場合は、利用する各ビルド環境の設定を更新し、アプリを再ビルドして配布します。別のリポジトリのキーで代用しないでください。既存の送信待ちレポートは新しいキーへ自動で移行されません。
 
-CLI 0.5.0の `init` が完了しても、送信できることは保証されません。録画設定が `auto` の場合はプランを照会しますが、Issue配送や将来の利用枠までは確認しません。配布前に `kue-qa check` とダッシュボードで対象プロジェクトの受付状態を確認し、実際の配布ビルドで送信を検証してください。確認後にキーが失効したり利用枠が消費されたりすると、後から送信できなくなる場合もあります。
+CLI 0.6.0の `init` が完了しても、送信できることは保証されません。録画設定が `auto` の場合はプランを照会しますが、Issue配送や将来の利用枠までは確認しません。配布前に `kue-qa check` とダッシュボードで対象プロジェクトの受付状態を確認し、実際の配布ビルドで送信を検証してください。確認後にキーが失効したり利用枠が消費されたりすると、後から送信できなくなる場合もあります。
 
 ### 症状と確認項目
 
@@ -647,7 +1109,7 @@ CLI 0.5.0の `init` が完了しても、送信できることは保証されま
 | 画像を表示できない | 保存期限と削除状態を確認。連続した閲覧で制限された場合は待機。期限切れ画像は復元できない |
 | 撮影・追加トリガーが動作しない | 対応OS、依存関係、development buildの再ビルドを確認。Simulatorではボタンからの起動でも検証 |
 
-### SDKエラー
+### Expo SDKエラー
 
 Cloud通信エラーは `KueCloudError.code` で分類します。HTTP応答がある場合は `status`、サーバーのエラーコードがある場合は `serverCode` も取得できます。
 
@@ -662,4 +1124,4 @@ Cloud通信エラーは `KueCloudError.code` で分類します。HTTP応答が�
 
 ### 問い合わせ
 
-[サポート](mailto:kue@ischca.dev)への連絡には、SDK・CLI・Expo・OSのバージョン、発生日時、再現手順、エラーコードを含めます。requestIdは取得できる場合に含めます。個人情報を含むスクリーンショット、秘密鍵、GitHubトークン、`receiptToken`、画像URLは添付しないでください。
+[サポート](mailto:kue@ischca.dev)への連絡には、SDK・CLI・使用するフレームワーク・OSのバージョン、発生日時、再現手順、エラーコードを含めます。requestIdは取得できる場合に含めます。個人情報を含むスクリーンショット、秘密鍵、GitHubトークン、`receiptToken`、画像URLは添付しないでください。

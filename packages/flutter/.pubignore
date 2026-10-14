@@ -1,0 +1,11 @@
+/.pubignore
+/pubspec.lock
+/.dart_tool/
+/build/
+/coverage/
+**/Pods/
+**/.symlinks/
+**/.gradle/
+**/local.properties
+**/Generated.xcconfig
+**/flutter_export_environment.sh

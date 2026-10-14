@@ -1,16 +1,20 @@
 # KUE Documentation
 
-KUE adds screen capture, cropping, and memo entry to Expo / React Native apps. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
+KUE adds screen capture, cropping, and memo entry to Expo, native iOS/Android, Flutter, and React Native apps without Expo. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Target version: SDK and CLI **0.5.0**. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
+Target version: SDK and CLI **0.6.0** (release preparation). Installation commands for this version are unavailable until the packages, tag, and Release assets are published. Expo SDK and CLI 0.6.0 have been verified on npm. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
 | Component | Supported environment |
 | --- | --- |
-| Application | Expo SDK 54–57 / React Native |
+| Expo SDK | Expo SDK 54–57 / iOS and Android. `@kue-qa/react-native` |
+| Native iOS | UIKit/SwiftUI, iOS 15+, Swift 5.9+ |
+| Native Android | Views/Compose, Android 8/API 26+, Kotlin/JVM 17 |
+| Flutter | Flutter 3.32+ / Dart 3.8+, iOS 15+ / Android API 26+ |
+| React Native without Expo | RN 0.86.2, React 19.2.3, New Architecture, iOS 15.1+ / Android API 26+ |
 | OS | iOS and Android. Web screen capture is not supported |
-| CLI | Node.js 22.13 or later |
+| CLI | Node.js 22.13 or later. Automatic setup is for Expo apps only |
 | License | SDK and CLI: MIT. Cloud: a separately provided hosted service |
 
 When building an Expo SDK 57 app with Xcode 27 (the iOS 27 SDK), use `expo@57.0.23` or later, set `ios.enableSceneSupport` to `true` in `expo-build-properties`, and regenerate the iOS project. An app built with the iOS 27 SDK without scene support cannot launch on iOS 27.
@@ -19,20 +23,22 @@ Cloud integration requires a GitHub account and installation of the KUE QA GitHu
 
 Custom storage through `onSubmit` does not require a Cloud account.
 
-## CLI setup
+## Expo CLI setup
+
+CLI discovery, dependency installation, JSX editing, and recorder inclusion management are for Expo only. Install native, Flutter, and React Native without Expo using their SDK-specific procedures.
 
 ### Procedure
 
 Save application changes, then run the command from the Expo app package or the workspace root.
 
 ```sh
-npx kue-qa init
+npx kue-qa@0.6.0 init
 ```
 
 If the current package declares an `expo` dependency, the CLI uses it directly. Otherwise, it detects Expo apps from `packages` in `pnpm-workspace.yaml` or `workspaces` in `package.json`. When both exist, the pnpm definition takes precedence. One candidate is selected automatically. Multiple candidates are listed and setup stops without changes. To select an app explicitly:
 
 ```sh
-npx kue-qa init --app apps/mobile
+npx kue-qa@0.6.0 init --app apps/mobile
 ```
 
 Automatic discovery stays within the invocation directory. It skips hidden directories, symbolic links, `node_modules`, `vendor`, `build`, `dist`, `coverage`, `ios`, and `android`. If the search exceeds 2,000 directories or no workspace definition exists, use `--app` or run inside the app. `--app` must select a directory inside the invocation directory without symbolic links.
@@ -106,7 +112,7 @@ The CLI does not store GitHub user tokens or billing credentials in the applicat
 
 ### Setup for manually mounted components
 
-In CLI 0.5.0, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
+In CLI 0.6.0, use `--skip-integration` for applications that already mount `Kue` through a custom wrapper. It manages connection configuration, dependencies and recording build settings without reading or editing JSX. It cannot be combined with `--root`.
 
 ```sh
 kue-qa init --skip-integration
@@ -117,14 +123,14 @@ Once, pass `kueCloudConfig` from `.kue/config.js` and `kueRecordingMode` from `.
 
 After a newer CLI updates the SDK, review the diff and use the application's existing build and distribution workflow. Changes to native recording inclusion require a native rebuild. The CLI does not start builds or distribute to TestFlight or Google Play.
 
-## Manual SDK installation
+## Manual Expo SDK installation
 
 ### Dependencies
 
-Install SDK 0.5.0 with the application's existing package manager and maintain one lockfile format.
+Install SDK 0.6.0 with the application's existing package manager and maintain one lockfile format.
 
 ```sh
-npm install @kue-qa/react-native@0.5.0
+npm install @kue-qa/react-native@0.6.0
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context
 ```
 
@@ -187,7 +193,463 @@ The image URI references a temporary file. Copy or upload the image before the c
 | `context` | Device and application metadata |
 | `capturedAt` | Capture timestamp |
 
-## Capture and Issue creation
+## Native iOS
+
+Provides screenshot editing, saved-finding group confirmation, optional recording, Cloud submission, a durable single-image outbox, and additional triggers. Configure a local destination or Cloud.
+
+### Install native iOS
+
+Requires iOS 15+, Swift 5.9+, and a UIKit or SwiftUI app. Retain one `KueController` per application window. There are no third-party SDK dependencies. The default is enabled in Debug and disabled in Release. The following examples explicitly set `enabled: true` for use in both builds.
+
+In Xcode, choose **File → Add Package Dependencies**, enter `https://github.com/Ischca/kue.git`, and select **Exact Version** `0.6.0`. Add `Kue` to the application target. For a Swift package consumer, use these dependencies:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/Ischca/kue.git", exact: "0.6.0")
+],
+targets: [
+    .target(name: "YourApp", dependencies: [.product(name: "Kue", package: "kue")])
+]
+```
+
+For CocoaPods, download `kue-ios-0.6.0.zip` and its published SHA-256 from the GitHub Release, verify the archive, and unpack it into the app repository's `vendor` directory. Confirm that `vendor/kue-ios` contains `Package.swift`, `Sources`, and both podspecs. For a Podfile next to `vendor`:
+
+```ruby
+platform :ios, '15.0'
+
+target 'YourApp' do
+  pod 'Kue', :path => './vendor/kue-ios'
+  # Optional native recording:
+  # pod 'KueRecorder', :path => './vendor/kue-ios'
+end
+```
+
+Run `pod install` and open the generated `.xcworkspace`. Retain the source directory at that path. This procedure does not use CocoaPods Trunk. Do not link duplicate native cores from both the Swift package and Flutter/RN packages containing the core. Git URL installation requires the `v0.6.0` tag, and archive installation requires the corresponding published Release asset.
+
+### Integrate with SwiftUI
+
+Retain the controller through a `@StateObject` owner and add `KueHost` to the screen. This minimal app displays the memo after explicit local saving. Local results stay in memory; the app implements persistence when needed.
+
+```swift
+import SwiftUI
+import Kue
+
+@MainActor final class FeedbackSession: ObservableObject {
+    @Published var lastMemo = ""
+    lazy var kue = KueController(
+        destination: .local(submitLabel: "Save", onSubmit: { [weak self] report in
+            self?.lastMemo = report.memo
+        }),
+        enabled: true
+    )
+}
+
+@main struct FeedbackApp: App {
+    var body: some Scene { WindowGroup { FeedbackScreen() } }
+}
+
+@MainActor struct FeedbackScreen: View {
+    @StateObject private var session = FeedbackSession()
+    var body: some View {
+        VStack {
+            Text(session.lastMemo)
+            Button("Report") {
+                try? session.kue.reportIssue(memo: "Check this screen")
+            }
+        }.background(KueHost(session.kue).frame(width: 0, height: 0))
+    }
+}
+```
+
+### Integrate with UIKit
+
+Retain the controller in the screen or window owner and call `attach(to:)` after the view enters a window. Do not detach merely because an SDK editor is presented; detach when removing the integration or its window.
+
+```swift
+import UIKit
+import Kue
+
+@MainActor final class FeedbackViewController: UIViewController {
+    private let result = UILabel()
+    private lazy var kue = KueController(
+        destination: .local(submitLabel: "Save", onSubmit: { [weak self] report in
+            self?.result.text = report.memo
+        }),
+        enabled: true
+    )
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        result.frame = CGRect(x: 24, y: 100, width: 280, height: 80)
+        view.addSubview(result)
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if let window = view.window { kue.attach(to: window) }
+    }
+    func removeFeedbackIntegration() { kue.detach() }
+}
+```
+
+### Native iOS capture and recording
+
+Tap the floating control or call `try kue.reportIssue(memo: "Check this screen")` to start screenshot editing. This call does not await submission completion. Review the crop and required memo before saving or submitting. `onCaptureFinished` reports capture completion; `onReportOutcome` reports submission, queueing, finding addition or cancellation from that editor. The app implements the destination for local callbacks; Cloud configuration uses an HTTPS origin and project key. Do not log keys, media, memos or receipt tokens.
+
+A build linking only `Kue` includes no ReplayKit recording implementation. To record, also add the `KueRecorder` product or pod and supply its provider. The URL and key below are placeholders.
+
+```swift
+import Kue
+import KueRecorder
+
+let config = try KueCloudConfiguration(
+    apiBaseURL: "https://kue.example.test",
+    projectKey: "pk_example_project_key"
+)
+let kue = KueController(
+    destination: .cloud(config),
+    enabled: true,
+    recorder: KueReplayKitRecorder()
+)
+```
+
+Recording requires Cloud plan verification, a group destination, the native provider, device availability and system consent. After stopping, review the preview and required memo before adding the finding. Output is silent H.264 MP4, limited to 60 seconds and 20 MiB. Mixed image/video groups allow at most 10 findings and 20 MiB total and submit only after explicit confirmation. `recording = .off` disables recording at runtime; removing the module requires removing its product/pod and rebuilding.
+
+`offlineQueue` defaults to disabled. The Cloud single-image queue is limited to 10 reports, 50 MiB and 7 days and retries only while foreground/idle. Groups and videos do not enter the durable queue. An HTTP 202 receipt means accepted, not completed Issue creation. Use `readReportStatus(_:)` to read status explicitly with the receipt token. `detach()` releases SDK operations/UI and session findings; discard durable queue entries separately when required.
+
+### API reference
+
+No photo-library or microphone permission is requested. Recording starts through OS consent. Additional shake/OS screenshot triggers are explicitly enabled and do not read saved photos. To remove the integration, call `detach()`, remove its product or pod, and rebuild. Submit or discard required pending reports before removal.
+
+[API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/ios/README.md)
+
+## Native Android
+
+Provides screenshot editing, saved-finding group confirmation, optional recording, Cloud submission, a durable single-image outbox, and additional triggers. The corresponding local callback takes precedence over Cloud submission.
+
+### Native Android installation
+
+Requirements: Android 8/API 26 or later, a foreground Activity and Kotlin/JVM 17. The reference consumers use compile/target SDK 36, AGP 8.13.2 and Kotlin 2.1.20. Views and Compose use the same native controller. Android artifacts are distributed as a GitHub Release Maven ZIP; these coordinates are not on Maven Central.
+
+Run from the application's root. Download the release and its SHA-256 file, verify the archive, and extract it:
+
+```sh
+curl --fail --location --output kue-android-maven-0.6.0.zip \
+  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip
+curl --fail --location --output kue-android-maven-0.6.0.zip.sha256 \
+  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip.sha256
+shasum -a 256 -c kue-android-maven-0.6.0.zip.sha256
+unzip kue-android-maven-0.6.0.zip -d vendor/kue
+```
+
+Keep the complete `vendor/kue/android-maven` directory, including AARs, POMs, Gradle metadata, sources and MIT license. It does not require an SDK source checkout or publisher credentials. Add the local repository to `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url = uri("vendor/kue/android-maven")
+            content { includeGroup("dev.kue.qa") }
+        }
+        google()
+        mavenCentral()
+    }
+}
+```
+
+Add dependencies to the application module and sync Gradle:
+
+```kotlin
+dependencies {
+    implementation("dev.kue.qa:kue-android:0.6.0")
+    // Optional: omit this dependency to exclude native screen recording.
+    implementation("dev.kue.qa:kue-android-recorder:0.6.0")
+}
+```
+
+The POM resolves Kotlin and OkHttp from standard repositories. The recorder resolves the matching core transitively, includes its resources, non-exported consent Activity/media-projection service, foreground-service permissions and R8 rules. The core adds Internet and screen-capture detection permissions. Neither artifact requests photo-library or microphone access. Remove the recorder dependency and rebuild to exclude its native pieces; runtime recording OFF alone does not remove them.
+
+### Attach to Views
+
+Install on the main thread after `setContentView`. Replace the fake key with the project's ingest key. KUE owns its floating control and detaches when the Activity is destroyed:
+
+```kotlin
+import android.app.Activity
+import android.os.Bundle
+import android.widget.TextView
+import dev.ischca.kue.Kue
+import dev.ischca.kue.KueCloudConfig
+import dev.ischca.kue.KueConfig
+
+class MainActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(TextView(this).apply { text = "Example" })
+        Kue.install(this, KueConfig(
+            enabled = true,
+            cloud = KueCloudConfig("https://kue.ischca.dev", "pk_REPLACE_WITH_PROJECT_KEY"),
+        ))
+    }
+}
+```
+
+### Attach to Compose
+
+Install once in the Activity after `setContent`, rather than on each recomposition:
+
+```kotlin
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.Text
+import dev.ischca.kue.Kue
+import dev.ischca.kue.KueCloudConfig
+import dev.ischca.kue.KueConfig
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { Text("Example") }
+        Kue.install(this, KueConfig(
+            enabled = true,
+            cloud = KueCloudConfig("https://kue.ischca.dev", "pk_REPLACE_WITH_PROJECT_KEY"),
+        ))
+    }
+}
+```
+
+When `enabled` is omitted, KUE defaults to enabled only in debuggable applications. The examples explicitly enable it, including Release. Recording still requires the optional recorder, AUTO mode, Cloud Indie entitlement, service availability, a group destination and fresh OS consent. Recording is silent H.264/MP4, up to 60 seconds/20 MiB; videos only send through explicitly confirmed groups. Including the dependency never starts a recording or sends a report automatically.
+
+### Upgrade and remove
+
+Extract the matching release repository and update core/recorder versions together. Do not install a duplicate source-module and AAR copy. To remove KUE, uninstall the controller, remove the dependencies and rebuild; remove the vendor directory only after it is no longer referenced. No Maven publisher credentials or additional host Activity result/launch-mode integration are required.
+
+### API reference
+
+For local storage, configure `KueConfig.onSubmit(report, complete)` and a separate `onSubmitGroup(group, complete)` with an action label. Complete application-owned saving before calling `complete(Result.success(Unit))` once. Groups never fall back to separate single callbacks. Additional shake/OS screenshot triggers are explicitly enabled and do not read the photo library. `controller.reportIssue(memo, context)` returns `true` when a capture can start and `false` when disabled, unavailable or busy; it does not await submission. Review the required memo, crop and destination before explicit submission. See the API reference for `openSavedFindings()`, `recordScreen()`, `openOutbox()` and state notifications.
+
+[API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/android/README.md)
+
+## Flutter
+
+Combines Flutter capture with native editors, floating controls, finding-group confirmation, optional recording, additional triggers, Cloud delivery and a durable single-image outbox.
+
+### Flutter requirements
+
+Flutter 3.32+ / Dart 3.8+, iOS 15+ or Android API 26+ are required. The checked Flutter toolchain is 3.32.5 / Dart 3.8.1. Android requires compile SDK 36, JDK 17 and compatible Gradle/AGP/Kotlin versions; the reference versions are Gradle 8.13 / AGP 8.10.1 / Kotlin 2.1.20. iOS uses CocoaPods. The packages include their native runtime and use Flutter's plugin loader.
+
+### Install Flutter core
+
+```sh
+flutter pub add kue_qa:0.6.0
+```
+
+The core plugin is required. Flutter uses pub dependencies and native builds; the Expo CLI setup command does not initialize a Flutter app.
+
+### Configure Flutter native builds
+
+For iOS, set the Podfile platform and Runner deployment target to 15.0 or later. Build with Flutter so it regenerates native plugin registration and Pods. If the embedding already manages UIScene, keep that setup. For the tested Flutter 3.32 embedding on an SDK requiring scenes, add the installed core package's `integration/ios/KueFlutterSceneDelegate.swift` to Runner. Configure one application scene in `UIApplicationSceneManifest` with delegate `$(PRODUCT_MODULE_NAME).KueFlutterSceneDelegate`. Keep AppDelegate as FlutterAppDelegate and remove its template `GeneratedPluginRegistrant.register(with: self)`; the scene registers the actual controller once. Do not create a second engine.
+
+For that Flutter 3.32 setup, generate the plugin links and copy the provided scene file:
+
+```sh
+flutter build ios --debug --config-only --no-codesign
+(cd ios && pod install)
+cp ios/.symlinks/plugins/kue_qa/integration/ios/KueFlutterSceneDelegate.swift ios/Runner/
+```
+
+In Xcode, add the copied Swift file to the Runner target. Add this entry to Runner's Info.plist:
+
+```xml
+<key>UIApplicationSceneManifest</key>
+<dict>
+  <key>UIApplicationSupportsMultipleScenes</key>
+  <false/>
+  <key>UISceneConfigurations</key>
+  <dict>
+    <key>UIWindowSceneSessionRoleApplication</key>
+    <array>
+      <dict>
+        <key>UISceneConfigurationName</key>
+        <string>Default Configuration</string>
+        <key>UISceneDelegateClassName</key>
+        <string>$(PRODUCT_MODULE_NAME).KueFlutterSceneDelegate</string>
+      </dict>
+    </array>
+  </dict>
+</dict>
+```
+
+For Android, set app minSdk to 26 and compileSdk to 36. Select JDK 17 and the compatible Gradle/AGP/Kotlin versions above. Flutter's plugin loader links the core and optional recorder. Do not add duplicate native Kue pods/projects to either platform. Rebuild after changing native dependencies.
+
+### Use KueHost
+
+Place one host outside the root Navigator with `MaterialApp.builder`. Use a stable local callback and a nonempty submission label, or a Cloud configuration.
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:kue_qa/kue_qa.dart';
+
+final kue = KueController();
+final lastMemo = ValueNotifier<String>('No report saved');
+
+Future<void> saveLocal(KueLocalReport report) async {
+  lastMemo.value = report.memo;
+}
+
+void main() => runApp(MaterialApp(
+  builder: (context, child) => KueHost(
+    controller: kue,
+    onSubmit: saveLocal,
+    submitLabel: 'Save locally',
+    child: child!,
+  ),
+  home: Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () async {
+              await kue.reportIssue(memo: 'Inspect this screen');
+            },
+            child: const Text('Report issue'),
+          ),
+          ValueListenableBuilder<String>(
+            valueListenable: lastMemo,
+            builder: (context, value, child) => Text(value),
+          ),
+        ],
+      ),
+    ),
+  ),
+));
+```
+
+This example keeps only the last memo in memory. It does not upload or create an Issue. The callback owns durable storage and idempotency using `clientReportId`; it receives immutable `imageBytes`, memo and metadata. A completed callback means local save completion. Failed saves remain in the native editor for explicit retry with the same ID and content. Groups require their own `onSubmitGroup` or Cloud destination; they do not invoke `onSubmit` once per finding.
+
+For Cloud delivery, obtain the origin/key from the project's connection settings and replace the fake placeholders. A local `onSubmit` takes precedence when both are configured.
+
+```dart
+KueHost(
+  controller: kue,
+  cloud: const KueCloudConfig(
+    apiBaseUrl: 'https://cloud.example.test',
+    projectKey: 'pk_example_project',
+  ),
+  child: child!,
+);
+```
+
+`enabled` defaults to `kDebugMode`: Profile and Release are disabled unless explicitly enabled. `reportIssue` returns `Future<KueReportOutcome>` after submission, queueing, finding addition or cancellation, with busy/disabled outcomes when appropriate; capture failures complete with a typed error. Default capture uses Flutter's RepaintBoundary as PNG, with a longest edge of 2048 pixels. Native dialogs, PlatformViews, external textures and protected content are not guaranteed; there is no native-window fallback. Use a custom PNG capture adapter when needed.
+
+### Add optional Flutter recording
+
+```sh
+flutter pub add kue_qa_recorder:0.6.0
+```
+
+No Dart recorder import or initialization is required. Rebuild both native applications. Recording additionally needs a group destination, Cloud feature entitlement/admission and OS consent, even when a local group callback saves the result. It produces silent H.264 MP4, up to 60 seconds / 20 MiB. The user reviews a clip, adds a required memo and explicitly confirms its group. There is no automatic video upload or durable group/video outbox. `recording: off` disables recording at runtime but retains the compiled module and Android service permissions.
+
+### Disable or remove Flutter KUE
+
+Set `enabled: false` to cancel the host integration. To exclude recording from the binary, remove its dependency and rebuild:
+
+```sh
+flutter pub remove kue_qa_recorder
+flutter pub get
+# On macOS for iOS:
+cd ios && pod install
+```
+
+Remove KueHost and the core dependency to remove KUE. Removing a host does not delete durable pending screenshots; discard owned entries explicitly before removing the SDK when deletion is required. The optional Cloud screenshot outbox defaults to false and is bound to its original destination. Queueing is local storage; HTTP 202 is acceptance, not completed Issue creation.
+
+### API reference
+
+[Flutter API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/flutter/README.md)
+
+## React Native without Expo
+
+Uses native floating controls, crop/memo editing, image/video group confirmation, additional triggers, Cloud submission and a durable single-image outbox. This installation is separate from the Expo package.
+
+### React Native without Expo requirements
+
+The supported baseline is React Native 0.86.2 / React 19.2.3 with New Architecture, iOS 15.1+ or Android API 26+, JDK 17 and compile SDK 36. Other React Native versions, the old architecture, web, macOS and Windows are not supported. The package includes its native core; no Expo dependency, separate Kue pod/Gradle project or private source checkout is required.
+
+### Install the React Native core
+
+```sh
+npm install @kue-qa/react-native-bare@0.6.0
+cd ios
+bundle exec pod install
+```
+
+Run the pod commands on macOS for iOS, then rebuild with the application's usual Xcode/Gradle or React Native CLI command. Autolinking and Codegen register the modules. Do not use the Expo setup CLI for this package. Debug normally uses Metro; Release contains an embedded JavaScript bundle. An independently launchable Debug application needs an embedded bundle and the corresponding app delegate configuration.
+
+### Mount Kue and capture
+
+Mount one Kue near the application root. Replace the fake origin and key with the project's connection settings. This example explicitly enables the SDK in Release as well.
+
+```tsx
+import { Kue } from "@kue-qa/react-native-bare";
+
+export function Feedback() {
+  return (
+    <Kue
+      enabled={true}
+      locale="en"
+      cloud={{
+        apiBaseUrl: "https://feedback.example.com",
+        projectKey: "pk_REPLACE_WITH_PROJECT_KEY",
+      }}
+    />
+  );
+}
+```
+
+After the host is mounted, an application action can open the native screenshot editor:
+
+```tsx
+import { reportIssue } from "@kue-qa/react-native-bare";
+
+await reportIssue({
+  memo: "Check this flow",
+  context: { route: "/products/yirgacheffe" },
+});
+```
+
+Opening the editor does not submit a report. reportIssue returns `Promise<void>` after capture and presentation; later submission, queueing, cancellation and finding addition are reported by onOutcome. Capture/background cancellation rejects the promise. The default capture uses the native window; secure content and native video/surface views may be unavailable.
+
+For local saving, supply a stable onSubmit callback and a nonempty submitLabel instead of a Cloud destination. onSubmit takes precedence if both are supplied. A group requires its own onSubmitGroup callback or Cloud destination; individual callbacks are not a fallback. Callback media URIs remain valid only while the returned promise is pending. Upload or await copyKueMediaFile before resolving; retained copies are application-owned. See the package API reference for copy removal, custom capture adapters and typed outcomes.
+
+enabled defaults to __DEV__, recording to auto and the floating button to true. Shake, system screenshot triggers and offlineQueue default to false. Locale follows native preferred languages unless set to ja/en. Callback timeout defaults to 30000 ms. Cloud, handler identities, capture, custom triggers and queue settings are fixed while mounted; use stable callbacks and remount with a new React key to change them.
+
+### Optional React Native recording
+
+```sh
+npm install @kue-qa/react-native-bare-recorder@0.6.0
+cd ios
+bundle exec pod install
+```
+
+Rebuild both native applications. No recorder import or JavaScript initialization is required. Recording requires a group destination, Cloud entitlement/admission and OS consent, including local saving. Output is silent H.264 MP4, at most 60 seconds / 20 MiB; the user previews it, enters a required memo and explicitly confirms the group. No microphone/camera permission or automatic video upload is used.
+
+### Disable or remove React Native KUE
+
+enabled={false} cancels the current session. To remove recording code and Android service permissions, remove the optional package, reinstall pods and rebuild:
+
+```sh
+npm uninstall @kue-qa/react-native-bare-recorder
+cd ios
+bundle exec pod install
+```
+
+recording="off" only disables recording at runtime. Remove Kue and the core dependency to remove the SDK. Persisted pending screenshots survive unmounting, so explicitly discard them before removal if required. The optional Cloud screenshot outbox is destination-bound; groups and videos are not queued. HTTP 202 means acceptance, not completed Issue creation.
+
+### API reference
+
+[React Native API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/react-native-bare/README.md)
+
+## Expo capture and Issue creation
 
 ### Procedure
 
@@ -296,7 +758,7 @@ The Issue contains a link to open the video. Anyone with its URL can view it; do
 
 ### Recording build configuration
 
-CLI 0.5.0 manages native recorder inclusion.
+CLI 0.6.0 manages native recorder inclusion.
 
 Set `kue.recording` in the selected application's `package.json`. The default is `auto`. `init` checks the connected workspace entitlement and configures the native recorder for exclusion on Free or inclusion on Indie. `off` excludes it regardless of plan. Screenshot dependencies are not excluded.
 
@@ -321,7 +783,7 @@ Updating configuration does not change an installed application. When a recordin
 Before distributing a build, check whether the selected app can currently submit using its managed configuration.
 
 ```sh
-npx kue-qa@0.5.0 check
+npx kue-qa@0.6.0 check
 ```
 
 Use `--app` to select the app. Alternatively, `--config project.json` reads dashboard JSON, or `--env` reads the already-resolved build variables `EXPO_PUBLIC_KUE_MODE`, `EXPO_PUBLIC_KUE_API_BASE_URL`, `EXPO_PUBLIC_KUE_PROJECT_KEY`, and optional `EXPO_PUBLIC_KUE_ENABLED`. These three configuration sources are mutually exclusive. Never put a key in a command argument. `--env` does not load dotenv; resolve the values used by Expo/EAS before invoking it.
@@ -341,7 +803,7 @@ With managed configuration, it also compares recorder inclusion with the current
 
 `KueReportGroup.findings` is an array of `KueFinding` (`KueLocalReport | KueVideoReport`). `KueVideoReport` contains `clientReportId`, `memo`, `context`, `capturedAt` and `video`. The `video` contains `uri`, `width`, `height`, `durationMs`, `byteSize`, `mimeType: "video/mp4"` and `capturedAt`. Media URIs must remain valid until submission finishes. When using a custom `onSubmit`, provide `onSubmitGroup` separately to enable grouped submissions. Each draft retains the handler supplied at creation; a rerender supplying another function does not retarget the existing draft.
 
-## SDK configuration reference
+## Expo SDK configuration reference
 
 ### KueProps
 
@@ -371,9 +833,9 @@ For internal QA release builds, set `enabled` using an explicit application-owne
 
 | Property | Required / default | Description |
 | --- | --- | --- |
-| `apiBaseUrl` | Required | Cloud base URL, without `/v1/reports` |
-| `projectKey` | Required | Project key in `pk_...` format. Public, and usable only to submit reports |
-| `timeoutMs` | Default `15000` | HTTP request timeout in milliseconds |
+| `apiBaseUrl` | Required | Cloud origin without credentials, path, query or fragment. Do not append `/v1/reports` |
+| `projectKey` | Required | Public project key: `pk_` followed by 8–128 letters, digits, `_` or `-`. Used for submission and project-feature checks, not management or report viewing |
+| `timeoutMs` | Default `15000` | HTTP request timeout in milliseconds; a whole number from 1 to 120000 |
 
 ### Metadata
 
@@ -393,7 +855,7 @@ export function QaReporter({ cloud }: { cloud: KueCloudConfig }) {
 
 Do not mount a second `Kue` when using this component. Metadata precedence is automatic values, then `context`, then `reportIssue({ context })`. Use anonymized route templates rather than URL query strings or user IDs.
 
-## Trigger API and sources
+## Expo trigger API and sources
 
 ### reportIssue
 
@@ -435,7 +897,7 @@ Sources are subscribed while KUE is enabled, foregrounded, and idle. They do not
 
 KUE does not request additional permissions or modify shared sensor sampling intervals. Optional Expo modules may add `ACTIVITY_RECOGNITION`, `READ_EXTERNAL_STORAGE`, or `READ_MEDIA_IMAGES`. Exclude them with `android.blockedPermissions` only when no other application feature needs them. Keep `DETECT_SCREEN_CAPTURE` for screenshot detection on Android 14+.
 
-## Offline queue
+## Expo offline queue
 
 ### Configuration
 
@@ -593,18 +1055,18 @@ Related documents: [Terms of Service](https://kue.ischca.dev/en/terms) / [Privac
 
 ## Upgrades and removal
 
-### SDK upgrades
+### Expo SDK upgrades
 
-The following commands upgrade to published version 0.5.0. For another release, verify the published version and release notes before replacing the version number.
+The following commands target version 0.6.0, currently in release preparation. Verify publication before running them. For another release, verify the published version and release notes before replacing the version number.
 
 ```sh
-npm install @kue-qa/react-native@0.5.0
+npm install @kue-qa/react-native@0.6.0
 ```
 
 To upgrade the SDK with the CLI, specify the target version. Existing connection configuration is reused. Add `--reconnect` only when retrieving configuration again.
 
 ```sh
-npx kue-qa@0.5.0 init
+npx kue-qa@0.6.0 init
 ```
 
 The CLI uses the SDK at its own version. It refuses implicit downgrades of a newer SDK. When nothing has changed, `init` does not write any files. Review the diff when upgrading. No SDK updates occur without running an update command.
@@ -621,13 +1083,13 @@ Uninstalling the SDK does not delete Cloud projects or GitHub Issues.
 
 ## Troubleshooting
 
-### Connection configuration for builds and distribution
+### Expo connection configuration for builds and distribution
 
 Verify the Cloud URL and project key in the build environment that embeds them in the app. Editing local `.env.local` does not update EAS environment variables or an already distributed app. Environment variables already set in the build environment take precedence over local files.
 
 After rotating a key or recreating a project, update each build environment, rebuild the app, and distribute the new build. Do not substitute a key belonging to a different repository. Existing queued entries are not automatically migrated to the new key.
 
-Completing CLI 0.5.0 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
+Completing CLI 0.6.0 `init` does not guarantee that submission is available. With `recording: auto`, it reads the plan but does not verify Issue delivery or future quota. Before distribution, use `kue-qa check` and the dashboard to inspect project admission, then test submission from the actual distribution build. Later key revocation or quota consumption can still prevent submissions after a build.
 
 ### Symptoms and checks
 
@@ -647,7 +1109,7 @@ Completing CLI 0.5.0 `init` does not guarantee that submission is available. Wit
 | Image unavailable | Check retention and deletion status. Wait after a viewing rate limit. Expired images cannot be restored |
 | Capture or additional trigger unavailable | Check OS support, dependencies, and the development client rebuild. Test with the button when using a simulator |
 
-### SDK errors
+### Expo SDK errors
 
 Cloud communication errors are classified by `KueCloudError.code`. `status` is available when an HTTP response was received; `serverCode` is available when the server supplied an error code.
 
@@ -662,4 +1124,4 @@ Cloud communication errors are classified by `KueCloudError.code`. `status` is a
 
 ### Support
 
-When contacting [support](mailto:kue@ischca.dev), include SDK, CLI, Expo, and OS versions; the timestamp; reproduction steps; the error code; and a requestId if available. Do not attach private keys, GitHub tokens, `receiptToken` values, image URLs, or screenshots containing personal information.
+When contacting [support](mailto:kue@ischca.dev), include SDK, CLI, framework, and OS versions; the timestamp; reproduction steps; the error code; and a requestId if available. Do not attach private keys, GitHub tokens, `receiptToken` values, image URLs, or screenshots containing personal information.

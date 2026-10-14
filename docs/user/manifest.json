@@ -1,5 +1,21 @@
 {
-  "sdkVersion": "0.5.0",
-  "reviewedAt": "2026-10-11",
-  "sections": ["requirements", "quickstart", "manual", "capture", "context", "triggers", "outbox", "management", "data", "updates", "troubleshooting"]
+  "sdkVersion": "0.6.0",
+  "reviewedAt": "2026-10-14",
+  "sections": [
+    "requirements",
+    "quickstart",
+    "manual",
+    "native-ios",
+    "native-android",
+    "flutter",
+    "react-native-bare",
+    "capture",
+    "context",
+    "triggers",
+    "outbox",
+    "management",
+    "data",
+    "updates",
+    "troubleshooting"
+  ]
 }

@@ -1,0 +1,49 @@
+{
+  "name": "@kue-qa/react-native-bare-recorder",
+  "version": "0.6.0",
+  "private": false,
+  "description": "Optional silent screen recorder for KUE React Native without Expo.",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "react-native": "./src/index.ts",
+  "peerDependencies": {
+    "@kue-qa/react-native-bare": "0.6.0",
+    "react": "19.2.3",
+    "react-native": "0.86.2"
+  },
+  "codegenConfig": {
+    "name": "KueBareRecorderSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "dev.kue.qa.reactnative.recorder"
+    },
+    "ios": {
+      "modulesProvider": {
+        "NativeKueRecorder": "KueRecorderTurboModule"
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ischca/kue.git",
+    "directory": "packages/react-native-bare-recorder"
+  },
+  "files": [
+    "dist",
+    "src",
+    "android/src/main",
+    "android/build.gradle.kts",
+    "android/consumer-rules.pro",
+    "ios",
+    "*.podspec",
+    "react-native.config.cjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
+  "homepage": "https://kue.ischca.dev/docs"
+}

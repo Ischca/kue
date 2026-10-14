@@ -1,4 +1,4 @@
-name: Verify SDK and CLI
+name: Verify SDKs and CLI
 on:
   pull_request:
   push:
@@ -29,3 +29,49 @@ jobs:
         working-directory: packages/react-native
       - run: npm pack --dry-run --ignore-scripts
         working-directory: packages/cli
+      - run: npm pack --dry-run --ignore-scripts
+        working-directory: packages/react-native-bare
+      - run: npm pack --dry-run --ignore-scripts
+        working-directory: packages/react-native-bare-recorder
+  swift-package:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      # Source/manifest checks; application/device acceptance is a separate gate.
+      - run: swift package dump-package
+      - run: swift build --target Kue
+      - run: swift build --target KueRecorder -c release
+  flutter-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      KUE_FLUTTER_REVISION: fcf2c11572af6f390246c056bc905eca609533a0
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install reviewed Flutter toolchain
+        run: |
+          set -euo pipefail
+          kue_flutter_sdk="$RUNNER_TEMP/kue-flutter-sdk"
+          git clone --depth 1 --branch 3.32.5 --single-branch https://github.com/flutter/flutter.git "$kue_flutter_sdk"
+          test "$(git -C "$kue_flutter_sdk" rev-parse HEAD)" = "$KUE_FLUTTER_REVISION"
+          echo "$kue_flutter_sdk/bin" >> "$GITHUB_PATH"
+          "$kue_flutter_sdk/bin/flutter" config --no-analytics
+          "$kue_flutter_sdk/bin/dart" --disable-analytics
+      - name: Analyze core source
+        working-directory: packages/flutter
+        run: |
+          flutter pub get
+          flutter analyze
+          dart format --output=none --set-exit-if-changed lib
+      - name: Analyze optional recorder against this exact core checkout
+        working-directory: packages/flutter-recorder
+        run: |
+          printf 'dependency_overrides:\n  kue_qa:\n    path: ../flutter\n' > pubspec_overrides.yaml
+          flutter pub get
+          flutter analyze
+          dart format --output=none --set-exit-if-changed lib

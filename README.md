@@ -1,6 +1,6 @@
 # KUE
 
-Capture a visual issue without leaving your Expo / React Native app: take a
+Capture a visual issue without leaving your iOS or Android app: take a
 screenshot, crop it, add a memo, and submit it through your own callback or KUE Cloud.
 
 This repository contains the MIT-licensed SDK and setup CLI only. KUE Cloud is a
@@ -15,7 +15,7 @@ current finding, or confirms a title for it together with the saved findings. A
 tap always captures; when the draft is full or its send result is unconfirmed,
 the new finding goes alone and Saved findings shows the draft. The long-press
 menu lists only what a tap cannot do, each item named beside its button.
-`KueProps` requires `cloud` or `onSubmit`, and `submitLabel` with a custom handler.
+The Expo `KueProps` requires `cloud` or `onSubmit`, and `submitLabel` with a custom handler.
 
 Optional silent native screen recording and mixed video/image submission require
 an active Indie workspace, a recording-capable build and Cloud with video
@@ -40,23 +40,27 @@ published SDK/CLI and Cloud features.
 
 ## Packages
 
-- [`@kue-qa/react-native`](packages/react-native/README.md): iOS / Android capture,
-  crop and memo editor, movable edge-docking button, automatic app/device metadata,
-  optional shake/screenshot triggers and durable offline queue.
-- [`kue-qa`](packages/cli/README.md): Expo setup CLI with browser-approved Cloud
-  configuration, repeatable source integration and local tarball support.
+| Integration | Installation and API reference | Distribution |
+| --- | --- | --- |
+| Expo SDK 54–57 | [@kue-qa/react-native](packages/react-native/README.md), [kue-qa setup CLI](packages/cli/README.md) | npm |
+| iOS 15+, SwiftUI/UIKit | [Kue / optional KueRecorder](packages/ios/README.md) | Swift Package tag `v0.6.0`; release ZIP for local CocoaPods |
+| Android API 26+, Views/Compose | [KUE Android](packages/android/README.md) | [Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
+| Flutter 3.32+, Dart 3.8+ | [kue_qa](packages/flutter/README.md), [optional recorder](packages/flutter-recorder/README.md) | pub.dev |
+| React Native 0.86.2 / React 19.2.3, New Architecture | [@kue-qa/react-native-bare](packages/react-native-bare/README.md), [optional recorder](packages/react-native-bare-recorder/README.md) | npm |
 
-Supports Expo SDK 54–57. The CLI requires Node.js 22.13 or newer. KUE is enabled
-only in development by default. Web capture is not supported.
+The CLI requires Node.js 22.13 or newer and configures Expo applications.
+Other integrations use their platform's dependency tools. KUE is disabled by
+default in Release. Web capture is not supported. Do not install duplicate native
+core copies when using the Flutter or Expo-free React Native packages.
 
 ## Release status
 
-SDK and CLI version `0.5.0` are available on npm with the `latest` tag:
-[@kue-qa/react-native](https://www.npmjs.com/package/@kue-qa/react-native) and
-[kue-qa](https://www.npmjs.com/package/kue-qa).
+SDKs and CLI version `0.6.0` are being prepared for release. Availability is confirmed separately
+for npm, pub.dev, the Swift Package tag and the GitHub Release archives.
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
 Cloud requires the KUE QA GitHub App on the destination repository. SDK usage
-with your own callback does not require the App or a Cloud account. Check the
+with your own callback does not require the App or a Cloud account. Recording
+requires Cloud feature entitlement even with local saving. Check the
 [pricing page](https://kue.ischca.dev/en/pricing) for Cloud sales availability.
 
 ## Cloud plans
@@ -87,7 +91,7 @@ Switching requires explicit dashboard confirmation after expiry;
 connecting an app or checking its key will not switch the destination. See the
 documentation for the complete policy.
 
-## Install
+## Install in Expo
 
 ```sh
 # From the Expo app or workspace root, once your repository has access to the GitHub App:
@@ -101,7 +105,8 @@ use `npx kue-qa init --app apps/mobile`; no app is selected implicitly.
 To use the current published version, run `npx kue-qa@latest init`. The CLI installs
 the SDK at the same exact version.
 No Cloud account is needed to use the SDK with your own `onSubmit` callback and `submitLabel`.
-See the [SDK installation and API documentation](packages/react-native/README.md) for
+For other platforms, follow the [Documentation](https://kue.ischca.dev/en/docs).
+See the [Expo SDK installation and API documentation](packages/react-native/README.md) for
 manual integration and the [CLI documentation](packages/cli/README.md) for tarball setup.
 Upgrades use normal package versions and your app's lockfile.
 

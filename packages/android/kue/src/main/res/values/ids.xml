@@ -1,0 +1,33 @@
+<resources>
+    <item name="kue_trigger" type="id" />
+    <item name="kue_trigger_badge" type="id" />
+    <item name="kue_radial_menu" type="id" />
+    <item name="kue_crop_editor" type="id" />
+    <item name="kue_recording_stop" type="id" />
+    <item name="kue_memo_input" type="id" />
+    <item name="kue_send" type="id" />
+    <item name="kue_cancel" type="id" />
+    <item name="kue_edit_report" type="id" />
+    <item name="kue_add_finding" type="id" />
+    <item name="kue_menu_recording" type="id" />
+    <item name="kue_menu_saved" type="id" />
+    <item name="kue_menu_outbox" type="id" />
+    <item name="kue_group_title" type="id" />
+    <item name="kue_group_confirm" type="id" />
+    <item name="kue_group_discard" type="id" />
+    <item name="kue_video_play" type="id" />
+    <item name="kue_video_memo" type="id" />
+    <item name="kue_video_save" type="id" />
+    <item name="kue_video_discard" type="id" />
+    <item name="kue_outbox_retry" type="id" />
+    <item name="kue_full_screen" type="id" />
+    <item name="kue_editor_saved" type="id" />
+    <item name="kue_editor_status" type="id" />
+    <item name="kue_group_remove" type="id" />
+    <item name="kue_group_back" type="id" />
+    <item name="kue_group_video" type="id" />
+    <item name="kue_preview_close" type="id" />
+    <item name="kue_menu_close" type="id" />
+    <item name="kue_outbox_discard" type="id" />
+    <item name="kue_outbox_close" type="id" />
+</resources>

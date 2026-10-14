@@ -2,15 +2,15 @@
   "name": "kue-public-workspace",
   "private": true,
   "license": "MIT",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "pnpm --filter @kue-qa/react-native build",
-    "test": "pnpm --filter kue-qa test && pnpm --filter @kue-qa/react-native test",
-    "typecheck": "pnpm --filter @kue-qa/react-native typecheck",
+    "build": "pnpm --filter @kue-qa/react-native build && pnpm --filter @kue-qa/react-native-bare build",
+    "test": "pnpm --filter kue-qa test && pnpm --filter @kue-qa/react-native test && pnpm --filter @kue-qa/react-native-bare test",
+    "typecheck": "pnpm --filter @kue-qa/react-native typecheck && pnpm --filter @kue-qa/react-native-bare typecheck && pnpm --filter @kue-qa/react-native-bare exec tsc --ignoreConfig --noEmit --skipLibCheck --moduleResolution Bundler --module ESNext --target ES2022 ../react-native-bare-recorder/src/index.ts ../react-native-bare-recorder/src/specs/NativeKueRecorder.ts",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   }
 }

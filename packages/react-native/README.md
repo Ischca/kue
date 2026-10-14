@@ -3,14 +3,14 @@
 Expo / React Native SDK for KUE. It captures the current iOS / Android screen, lets the developer crop the relevant area and add a memo, then sends a structured report to a callback or KUE Cloud. Without either, it logs only a setup reminder; memo, metadata, screenshot paths, and receipt tokens are omitted from built-in logs.
 
 Supports Expo SDK 54–57, iOS and Android. MIT licensed. These instructions target
-version `0.5.0`; confirm that version is available on npm before installation.
+version `0.6.0`; confirm that version is available on npm before installation.
 KUE Cloud availability is separate from the SDK release.
 With Xcode 27 and Expo SDK 57, use `expo@57.0.23` or later, enable
 `expo-build-properties` `ios.enableSceneSupport`, and regenerate the iOS project.
 
 ### Display language
 
-Version 0.5.0 shows the KUE screens in Japanese or English. KUE uses Japanese when
+Version 0.6.0 shows the KUE screens in Japanese or English. KUE uses Japanese when
 Japanese comes before English in the device's preferred languages, and English
 otherwise. iOS reads the device language settings, including per-app languages;
 Android uses the language applied to the app. Fix the language with
@@ -66,7 +66,7 @@ repeating paid-plan status. Free locks and verification failures remain distinct
 Documentation: [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs).
 
 ```bash
-npx kue-qa@0.5.0 init
+npx kue-qa@0.6.0 init
 ```
 
 The CLI connects to `https://kue.ischca.dev` by default. Pass `--server URL` for
@@ -75,7 +75,7 @@ staging or a local server, or `--config project.json` for existing configuration
 The CLI can also run at a workspace root and detect its single Expo app. With
 multiple apps, select one using `--app apps/mobile`.
 
-Add `@kue-qa/react-native@0.5.0`, then its native peers:
+Add `@kue-qa/react-native@0.6.0`, then its native peers:
 
 ```bash
 npx expo install expo-application expo-constants expo-device expo-file-system expo-image-manipulator react-native-view-shot react-native-safe-area-context

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.0 — 2026-10-14
+
+- Add native iOS integration for SwiftUI/UIKit through Swift Package Manager and
+  the release archive with local CocoaPods. Add native Android integration for
+  Views/Compose through the release's Maven archive.
+- Add Flutter `kue_qa` and optional `kue_qa_recorder` plugins, with their native
+  implementations included. Add Expo-free React Native
+  `@kue-qa/react-native-bare` and optional recorder packages for React Native
+  0.86.2 / React 19.2.3 with New Architecture.
+- Provide screenshot editing, grouped findings, classic/mascot buttons, docking,
+  long-press actions, Japanese/English screens, optional silent recording,
+  explicit local/Cloud submission, retry and destination-bound screenshot
+  outbox across these integrations. Native recording is a separate dependency;
+  runtime disabling does not remove its compiled code or permissions.
+- Document each platform's installation, supported baseline, defaults, callback
+  media lifetime, native rebuild and removal. Expo setup remains available
+  through the CLI; other integrations use their platform's dependency tools.
+- Fix the native confirmation's initial-title state, composed text input and
+  held-button menu handling. Flutter iOS includes a Scene integration adapter
+  for the documented Flutter 3.32 embedding setup. React Native startup follows
+  the host's normal Metro/embedded bundle configuration.
+
+
 ## 0.5.0 — 2026-10-11
 
 - Show the KUE screens in Japanese or English. Japanese is shown when it comes
