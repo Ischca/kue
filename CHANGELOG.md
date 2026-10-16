@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 — 2026-10-16 (Android Maven Central distribution)
+
+- Add Maven Central distribution for native Android Views/Compose:
+  `io.github.ischca.kue:kue-android:0.6.0` and optional
+  `io.github.ischca.kue:kue-android-recorder:0.6.0`. The recorder resolves the
+  matching core dependency transitively.
+- Document installation with `google()` and `mavenCentral()`, migration from the
+  existing Maven ZIP coordinates, recorder removal and application cleanup.
+- Preserve the existing 0.6.0 runtime, release archives and their coordinates,
+  Swift Package tag, npm packages and pub.dev packages.
+
 ## 0.6.0 — 2026-10-14
 
 - Add native iOS integration for SwiftUI/UIKit through Swift Package Manager and

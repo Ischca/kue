@@ -2,7 +2,7 @@
 
 KUE adds screen capture, cropping, and memo entry to Expo, native iOS/Android, Flutter, and React Native apps without Expo. Reports can be submitted to KUE Cloud for GitHub Issue creation or passed to an application-defined storage handler.
 
-Target version: SDK and CLI **0.6.0**. Expo and Expo-free React Native packages and the CLI are distributed on npm; Flutter core and recorder are distributed on pub.dev. Native SDKs use the matching `v0.6.0` Swift Package tag or GitHub Release archives. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
+Target version: SDK and CLI **0.6.0**. Expo and Expo-free React Native packages and the CLI are distributed on npm; Flutter core and recorder are distributed on pub.dev. Native iOS uses Swift Package Manager with the matching `v0.6.0` tag, or a GitHub Release ZIP. Native Android is distributed on Maven Central; the existing Android Maven ZIP and its coordinates remain available. Cloud limits describe the current production service. Recording also requires a native build that includes the recorder and an active entitlement.
 
 ## Requirements
 
@@ -328,41 +328,26 @@ Provides screenshot editing, saved-finding group confirmation, optional recordin
 
 ### Native Android installation
 
-Requirements: Android 8/API 26 or later, a foreground Activity and Kotlin/JVM 17. The reference consumers use compile/target SDK 36, AGP 8.13.2 and Kotlin 2.1.20. Views and Compose use the same native controller. Android artifacts are distributed as a GitHub Release Maven ZIP; these coordinates are not on Maven Central.
+Requirements: Android 8/API 26 or later, a foreground Activity and Kotlin/JVM 17. The reference consumers use compile/target SDK 36, AGP 8.13.2 and Kotlin 2.1.20. Views and Compose use the same native controller. Install core and the optional recorder from Maven Central. No SDK source checkout, vendor ZIP or publisher credentials are required.
 
-Run from the application's root. Download the release and its SHA-256 file, verify the archive, and extract it:
-
-```sh
-curl --fail --location --output kue-android-maven-0.6.0.zip \
-  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip
-curl --fail --location --output kue-android-maven-0.6.0.zip.sha256 \
-  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip.sha256
-shasum -a 256 -c kue-android-maven-0.6.0.zip.sha256
-unzip kue-android-maven-0.6.0.zip -d vendor/kue
-```
-
-Keep the complete `vendor/kue/android-maven` directory, including AARs, POMs, Gradle metadata, sources and MIT license. It does not require an SDK source checkout or publisher credentials. Add the local repository to `settings.gradle.kts`:
+Include `google()` and `mavenCentral()` in `settings.gradle.kts`:
 
 ```kotlin
 dependencyResolutionManagement {
     repositories {
-        maven {
-            url = uri("vendor/kue/android-maven")
-            content { includeGroup("dev.kue.qa") }
-        }
         google()
         mavenCentral()
     }
 }
 ```
 
-Add dependencies to the application module and sync Gradle:
+Add dependencies to the application module and sync Gradle. Omit the recorder dependency to exclude native recording:
 
 ```kotlin
 dependencies {
-    implementation("dev.kue.qa:kue-android:0.6.0")
+    implementation("io.github.ischca.kue:kue-android:0.6.0")
     // Optional: omit this dependency to exclude native screen recording.
-    implementation("dev.kue.qa:kue-android-recorder:0.6.0")
+    implementation("io.github.ischca.kue:kue-android-recorder:0.6.0")
 }
 ```
 
@@ -421,7 +406,7 @@ When `enabled` is omitted, KUE defaults to enabled only in debuggable applicatio
 
 ### Upgrade and remove
 
-Extract the matching release repository and update core/recorder versions together. Do not install a duplicate source-module and AAR copy. To remove KUE, uninstall the controller, remove the dependencies and rebuild; remove the vendor directory only after it is no longer referenced. No Maven publisher credentials or additional host Activity result/launch-mode integration are required.
+Update core and recorder dependency versions together, sync Gradle and rebuild. When migrating from the existing GitHub Release ZIP coordinates under `dev.kue.qa`, replace the old dependencies with the Maven Central coordinates above. Remove the old local repository reference and source-module SDK dependencies; do not link duplicate SDK copies. Call `controller.uninstall()` to detach the running SDK. To remove KUE from the application, remove `Kue.install`, controller calls and unused imports from the application code, remove the dependencies and rebuild. Remove the vendor directory only after it is no longer referenced. Existing ZIP distribution and its coordinates remain available. No Maven publisher credentials or additional host Activity result/launch-mode integration are required.
 
 ### API reference
 

@@ -2,7 +2,7 @@
 
 KUEはExpo、ネイティブiOS／Android、Flutter、Expoを使用しないReact Nativeアプリに画面キャプチャ、範囲選択、メモ入力を組み込むSDKです。レポートの送信先には、GitHub Issueを作成するKUE Cloud、またはアプリ側の保存処理を指定します。
 
-対象バージョン: SDK・CLI **0.6.0**。Expo・ExpoなしReact NativeのパッケージとCLIはnpm、Flutter core・recorderはpub.devで配布しています。ネイティブSDKは対応する`v0.6.0`のSwift PackageタグまたはGitHub Releaseアーカイブを使用します。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
+対象バージョン: SDK・CLI **0.6.0**。Expo・ExpoなしReact NativeのパッケージとCLIはnpm、Flutter core・recorderはpub.devで配布しています。ネイティブiOSはSwift Package Managerで`v0.6.0`タグ、またはGitHub ReleaseのZIPを使用します。ネイティブAndroidはMaven Centralから導入します。既存のAndroid Maven ZIPとその座標も維持します。Cloudの利用条件は現在の本番環境を対象とします。録画には、利用権に加えて録画モジュールを含むネイティブビルドが必要です。
 
 ## 動作要件
 
@@ -328,41 +328,26 @@ let kue = KueController(
 
 ### ネイティブAndroidの導入
 
-Android 8／API 26以上、フォアグラウンドのActivity、Kotlin／JVM 17を必要とします。参考アプリはcompile／target SDK 36、AGP 8.13.2、Kotlin 2.1.20を使用します。ViewsとComposeは同じネイティブコントローラーを使用します。Androidの配布物はGitHub ReleaseのMaven ZIPです。Maven Centralの配布座標ではありません。
+Android 8／API 26以上、フォアグラウンドのActivity、Kotlin／JVM 17を必要とします。参考アプリはcompile／target SDK 36、AGP 8.13.2、Kotlin 2.1.20を使用します。ViewsとComposeは同じネイティブコントローラーを使用します。Maven Centralから本体と任意の録画モジュールを導入します。SDKのソースcheckout、ZIPの配置、公開者の認証情報は不要です。
 
-アプリのルートでZIPとSHA-256ファイルを取得し、検証して解凍します。
-
-```sh
-curl --fail --location --output kue-android-maven-0.6.0.zip \
-  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip
-curl --fail --location --output kue-android-maven-0.6.0.zip.sha256 \
-  https://github.com/Ischca/kue/releases/download/v0.6.0/kue-android-maven-0.6.0.zip.sha256
-shasum -a 256 -c kue-android-maven-0.6.0.zip.sha256
-unzip kue-android-maven-0.6.0.zip -d vendor/kue
-```
-
-AAR、POM、Gradleメタデータ、ソース、MITライセンスを含む`vendor/kue/android-maven`をまとめて保持してください。SDKソースのcheckoutや公開者の認証情報は不要です。`settings.gradle.kts`にローカルリポジトリを追加します。
+`settings.gradle.kts`のリポジトリに`google()`と`mavenCentral()`を含めます。
 
 ```kotlin
 dependencyResolutionManagement {
     repositories {
-        maven {
-            url = uri("vendor/kue/android-maven")
-            content { includeGroup("dev.kue.qa") }
-        }
         google()
         mavenCentral()
     }
 }
 ```
 
-アプリモジュールに依存を追加し、Gradleを同期します。
+アプリモジュールに依存を追加し、Gradleを同期します。録画を含めない場合はrecorder依存を追加しません。
 
 ```kotlin
 dependencies {
-    implementation("dev.kue.qa:kue-android:0.6.0")
+    implementation("io.github.ischca.kue:kue-android:0.6.0")
     // Optional: omit this dependency to exclude native screen recording.
-    implementation("dev.kue.qa:kue-android-recorder:0.6.0")
+    implementation("io.github.ischca.kue:kue-android-recorder:0.6.0")
 }
 ```
 
@@ -421,11 +406,11 @@ class MainActivity : ComponentActivity() {
 
 ### アップグレードと削除
 
-対応するリリースのリポジトリを解凍し、coreとrecorderの版をそろえます。ソースモジュールとAARを重複して導入しないでください。取り除く場合はコントローラーを解除し、依存を削除して再ビルドします。参照がなくなった後にvendorディレクトリを削除できます。Maven公開者の認証情報や、ホストActivityの結果通知・launch modeの追加設定は不要です。
+coreとrecorderの依存バージョンをそろえ、Gradleを同期して再ビルドします。既存のGitHub Release ZIP版の`dev.kue.qa`から移行する場合は、旧依存を上記のMaven Central座標へ置き換えます。旧ローカルリポジトリへの参照と、SDKのソースモジュール依存は除去し、同じSDKを二重にリンクしないでください。実行中のSDKを解除する場合は`controller.uninstall()`を呼びます。SDKをアプリから削除する場合は、`Kue.install`、controllerへの呼び出し、不要なimportをアプリのコードから取り除き、依存を削除して再ビルドします。vendorディレクトリは参照がなくなった後に削除できます。既存のZIP配布とその座標は維持します。Maven公開者の認証情報や、ホストActivityの結果通知・launch modeの追加設定は不要です。
 
 ### APIリファレンス
 
-ローカル保存は `KueConfig.onSubmit(report, complete)`、グループ保存は独立した `onSubmitGroup(group, complete)` で指定し、表示ラベルを設定します。アプリ側で保存が完了してから `complete(Result.success(Unit))` を1回だけ返します。グループを単独コールバックへ分割して送信することはありません。追加のシェイク／OSスクリーンショット検知は明示的に有効化し、写真ライブラリを読み取りません。 `controller.reportIssue(memo, context)` はキャプチャを開始できた場合に `true`、無効・未使用可能・操作中の場合に `false` を返し、提出完了を待ちません。必須メモ、範囲、保存先を確認して明示的に送信します。`openSavedFindings()`、`recordScreen()`、`openOutbox()` と状態通知の詳細はAPIリファレンスを参照してください。
+ローカル保存は `KueConfig.onSubmit(report, complete)`、グループ保存は独立した `onSubmitGroup(group, complete)` で指定し、表示ラベルを設定します。アプリ側で保存が完了してから `complete(Result.success(Unit))` を1回だけ返します。グループを単独コールバックへ分割して送信することはありません。追加のシェイク／OSスクリーンショット検知は明示的に有効化し、写真ライブラリを読み取りません。 `controller.reportIssue(memo, context)` はキャプチャを開始できた場合に `true`、無効・利用不可・操作中の場合に `false` を返し、提出完了を待ちません。必須メモ、範囲、保存先を確認して明示的に送信します。`openSavedFindings()`、`recordScreen()`、`openOutbox()` と状態通知の詳細はAPIリファレンスを参照してください。
 
 [API reference](https://github.com/Ischca/kue/blob/v0.6.0/packages/android/README.md)
 

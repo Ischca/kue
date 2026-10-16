@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 1,
+  "sdkVersion": "0.6.0",
+  "groupId": "io.github.ischca.kue",
+  "repositoryUrl": "https://repo.maven.apache.org/maven2/",
+  "artifacts": [
+    {
+      "artifactId": "kue-android",
+      "files": [
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar",
+          "size": 671,
+          "sha256": "107a78e05cdcaa71310cce8c7a8321b17811cf5ec172bcd37bb573e3750bafbb"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar.asc",
+          "size": 699,
+          "sha256": "8ae05870cb5e932e0bb7d4969084981783b146284c708c6c1a1c917085a0fc52"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar.md5",
+          "size": 33,
+          "sha256": "f675e87d9d09e472ba02bbe7522f9f93db3e5d104678111278fd8c14346fe8d2"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar.sha1",
+          "size": 41,
+          "sha256": "e7590850dc65d6d8b8e8ecddffc26e4da694f3d19745a224511b5788729ebaa3"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar.sha256",
+          "size": 65,
+          "sha256": "c91937656eef97561109109c853c5dc56d79c8c2001c78ce0bbb44da3407a22d"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-javadoc.jar.sha512",
+          "size": 129,
+          "sha256": "789aa34675f94db5f2e40b4f8a742970e56f5890b5ad04ce3dd1f1d981a2ce61"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar",
+          "size": 43625,
+          "sha256": "5b80a17cd70f9ccf6130831a9fc0c378c10417c46d25758629d72f13547f62c2"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar.asc",
+          "size": 699,
+          "sha256": "62f0cf922b7d2dd8530fdfdd6a1ab8429f18297b1da4276b289b989ddfae4646"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar.md5",
+          "size": 33,
+          "sha256": "ecd330ad83bd75f133707b7b4420439f99072b6a78c2efb909ceff64215c5d3e"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar.sha1",
+          "size": 41,
+          "sha256": "ff1257e31b2c638ca1eff529bc4df97acc16627028e6ff8d8917d2f53423dead"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar.sha256",
+          "size": 65,
+          "sha256": "edb65b5215b91ed88fcb07dfc39377db7ce920b30becc7a9f8f85e92434fce26"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0-sources.jar.sha512",
+          "size": 129,
+          "sha256": "7b51bde1ca337a1e6e2e7fc4cb6bee5dbd268fb8568c1eb8394ca38d320a09f4"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar",
+          "size": 221069,
+          "sha256": "90eb8c64b7cccd00b2318d332917bde7fdc2a4c42ded40346791baeafe9b783e"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar.asc",
+          "size": 699,
+          "sha256": "123594f434b03fca25b104f241bc56f4de22975b242088ef6ec7bee7a9d90f7d"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar.md5",
+          "size": 33,
+          "sha256": "009c9938a331947b26e3636494b4004264f159556afc6c0b8fc1a1ed0b219d44"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar.sha1",
+          "size": 41,
+          "sha256": "bc54dcf9c0d8b291179b61a540797341473c705c38e7a5aa28adb51fe8f38012"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar.sha256",
+          "size": 65,
+          "sha256": "c3bf9461257c2de02f492918676de4cadc60a961957ce4420947f8682b9f77be"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.aar.sha512",
+          "size": 129,
+          "sha256": "a48494e5fc0653f96078422758c84b48f5e81ec39637d788492701b7d6171401"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom",
+          "size": 1472,
+          "sha256": "9fd882a82fe9c6ffc4879d6420d88339c501f9ab1e48a17eff2f4b6f9ee57c76"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom.asc",
+          "size": 699,
+          "sha256": "235d46e0ce6239d5d1c3d6c4eee33204285d7f0e8022f12c09c5b406c1b1ca33"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom.md5",
+          "size": 33,
+          "sha256": "e73d216ff1d1bc1d80524f6517ec27626bea805ceff2b2ab9f0f9e1f66ad424d"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom.sha1",
+          "size": 41,
+          "sha256": "1bdae46a1a5ef2742942ee0b43681f6f70a9ae630277dd962f996ed7344f8d75"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom.sha256",
+          "size": 65,
+          "sha256": "0dc67f82c545733a408ba11a1e45bbdc5a5acfe5c608aa0a6f1765f176b96bc0"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android/0.6.0/kue-android-0.6.0.pom.sha512",
+          "size": 129,
+          "sha256": "72a84b63bc1089bed0cca5ef9fc64c330bab659b67b5781feef2da585ffdd2df"
+        }
+      ]
+    },
+    {
+      "artifactId": "kue-android-recorder",
+      "files": [
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar",
+          "size": 698,
+          "sha256": "58eca139c3f01979ae3df57011113066bf5d578d776d2c3a62221fc4eb437fe9"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar.asc",
+          "size": 699,
+          "sha256": "94c8d4442aba47097bb9e889d6966f9874e4d0d5ae59257058f2308ebdb3b02a"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar.md5",
+          "size": 33,
+          "sha256": "00ff25f72a49337ea43f575dff23ecce73ea97c6b09897886b389ad9fd4aa8b8"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar.sha1",
+          "size": 41,
+          "sha256": "e96f9c7afb923ed62862e1fc01b142b8b89acc1409dd703563b4e7a114a9904c"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar.sha256",
+          "size": 65,
+          "sha256": "66b765f7e3630247a404cb2b46fc73ab8454c06cd4d29be332197212bd3e74f8"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-javadoc.jar.sha512",
+          "size": 129,
+          "sha256": "2f0a8ec79e272360720685e147fa0e24c46f03660bb5f85acfbf6183a3800d67"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar",
+          "size": 5557,
+          "sha256": "6380b9b919de993322d5dbeee0a2facc5d92f325a7eb7a94946cded6cd88311b"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar.asc",
+          "size": 699,
+          "sha256": "9b4a75724513ca95c50a026c2f370cacc3799bd5151093e174b1df6991e55cc8"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar.md5",
+          "size": 33,
+          "sha256": "d47c4f86c020e6a19e406be5c8bf159d91ed7bc8639543b4e70114117bc3a0ff"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar.sha1",
+          "size": 41,
+          "sha256": "b13656be0807a35db2580a37b87a3e29f8b0a414bcf33d858707a2b9523d91bd"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar.sha256",
+          "size": 65,
+          "sha256": "265c99f40203ef91c5f42a8cea1fa1e7116c608623cdb44aa1575d2cef903fbf"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0-sources.jar.sha512",
+          "size": 129,
+          "sha256": "a3951e09407cf2dabeeb443de3e812f567f356730b2ab497e8ee0b64ffb01d2d"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar",
+          "size": 19661,
+          "sha256": "8b1a2d600b67663cacef063cf762e0f87cc608500cd66ade92f06046ac454a83"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar.asc",
+          "size": 699,
+          "sha256": "0160579b198f24e55ba15f0896ffe43caaa86f983c2712a19521f49d89fc1e06"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar.md5",
+          "size": 33,
+          "sha256": "06bfbfc59f0e7a7b9823f644393cdb61c02cf1094b347838c67810b4fbed26d5"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar.sha1",
+          "size": 41,
+          "sha256": "d1fcbf0a07fa590df6cc3f6d2828e3e768639bfbc5ddfe170a983dc5c172cca4"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar.sha256",
+          "size": 65,
+          "sha256": "673a53fc7e7647b783bf7e9bada173d0421a7d6c420eedbd473801467535d958"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.aar.sha512",
+          "size": 129,
+          "sha256": "f739f2d740e53c54265a57eb378ff883818b1d2176e0a2ddfc8c531d678a795a"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom",
+          "size": 1484,
+          "sha256": "a65406ed29dbeba35e447ba815eb4a33c9a22448b5e121ccfc1f1fb94f8e0ea9"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom.asc",
+          "size": 699,
+          "sha256": "4eb9575428523af78e77d148a78312aecfd9f988af4c6ed4fe0da47df8264cfe"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom.md5",
+          "size": 33,
+          "sha256": "7908040dadcdb4778af424445995eabecad15096e006865bdcaf40e44573ef55"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom.sha1",
+          "size": 41,
+          "sha256": "9929f7e50d36223514af79bb0992f499eef6f5ea6576a30841f9901baf7a2e6d"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom.sha256",
+          "size": 65,
+          "sha256": "285e505016f788b95d37c6302597be20220a8854a122e9c7c68f4e4bd2a339bc"
+        },
+        {
+          "path": "io/github/ischca/kue/kue-android-recorder/0.6.0/kue-android-recorder-0.6.0.pom.sha512",
+          "size": 129,
+          "sha256": "b12ba8371ffa48c5d4b987d74796dbc45187852e6b92185a06afcd454c30fda6"
+        }
+      ]
+    }
+  ],
+  "signingFingerprint": "651E4B72823371E8CE6E4C2BD5CADE158BF99B57"
+}

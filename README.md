@@ -44,7 +44,7 @@ published SDK/CLI and Cloud features.
 | --- | --- | --- |
 | Expo SDK 54–57 | [@kue-qa/react-native](packages/react-native/README.md), [kue-qa setup CLI](packages/cli/README.md) | npm |
 | iOS 15+, SwiftUI/UIKit | [Kue / optional KueRecorder](packages/ios/README.md) | Swift Package tag `v0.6.0`; release ZIP for local CocoaPods |
-| Android API 26+, Views/Compose | [KUE Android](packages/android/README.md) | [Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
+| Android API 26+, Views/Compose | [Installation](https://kue.ischca.dev/en/docs#native-android), [API reference](packages/android/README.md) | Maven Central; [legacy Maven ZIP](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
 | Flutter 3.32+, Dart 3.8+ | [kue_qa](packages/flutter/README.md), [optional recorder](packages/flutter-recorder/README.md) | [pub.dev core](https://pub.dev/packages/kue_qa/versions/0.6.0), [recorder](https://pub.dev/packages/kue_qa_recorder/versions/0.6.0) |
 | React Native 0.86.2 / React 19.2.3, New Architecture | [@kue-qa/react-native-bare](packages/react-native-bare/README.md), [optional recorder](packages/react-native-bare-recorder/README.md) | npm |
 
@@ -57,13 +57,42 @@ core copies when using the Flutter or Expo-free React Native packages.
 
 SDKs and CLI version `0.6.0` are available. Expo, Expo-free React Native and CLI
 packages are distributed on npm; Flutter core and recorder are on pub.dev. Native
-iOS uses the `v0.6.0` Swift Package tag or release ZIP; native Android uses the
-[Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0).
+iOS uses the `v0.6.0` Swift Package tag or release ZIP; native Android core and
+optional recorder are on Maven Central. The existing
+[Maven ZIP release](https://github.com/Ischca/kue/releases/tag/v0.6.0) remains available.
 The production Cloud is hosted at [kue.ischca.dev](https://kue.ischca.dev/).
 Cloud requires the KUE QA GitHub App on the destination repository. SDK usage
 with your own callback does not require the App or a Cloud account. Recording
 requires Cloud feature entitlement even with local saving. Check the
 [pricing page](https://kue.ischca.dev/en/pricing) for Cloud sales availability.
+
+## Native Android installation
+
+Include `google()` and `mavenCentral()` in `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+Add the dependencies to the application module and sync Gradle:
+
+```kotlin
+dependencies {
+    implementation("io.github.ischca.kue:kue-android:0.6.0")
+    // Optional: omit this dependency to exclude native screen recording.
+    implementation("io.github.ischca.kue:kue-android-recorder:0.6.0")
+}
+```
+
+Requirements are Android API 26 or later and Kotlin/JVM 17. Attach KUE to the
+foreground Activity once after `setContentView` or `setContent`; see
+[Documentation](https://kue.ischca.dev/en/docs#native-android) for Views/Compose
+examples, defaults, recording requirements, ZIP migration and removal.
 
 ## Cloud plans
 
