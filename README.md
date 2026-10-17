@@ -31,7 +31,7 @@ distribution remain part of the host application's workflow.
 ## Documentation
 
 - [English](https://kue.ischca.dev/en/docs) / [日本語](https://kue.ischca.dev/docs)
-- Markdown sources: [English](docs/user/en.md) / [日本語](docs/user/ja.md)
+- Markdown sources: [English](docs/user/en/) / [日本語](docs/user/ja/)
 
 When changing user-visible behavior, review and update both documentation languages along
 with affected package READMEs and release notes. If no documentation change is
@@ -44,7 +44,7 @@ published SDK/CLI and Cloud features.
 | --- | --- | --- |
 | Expo SDK 54–57 | [@kue-qa/react-native](packages/react-native/README.md), [kue-qa setup CLI](packages/cli/README.md) | npm |
 | iOS 15+, SwiftUI/UIKit | [Kue / optional KueRecorder](packages/ios/README.md) | Swift Package tag `v0.6.0`; release ZIP for local CocoaPods |
-| Android API 26+, Views/Compose | [Installation](https://kue.ischca.dev/en/docs#native-android), [API reference](packages/android/README.md) | Maven Central; [legacy Maven ZIP](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
+| Android API 26+, Views/Compose | [Installation](https://kue.ischca.dev/en/docs/android), [API reference](packages/android/README.md) | Maven Central; [legacy Maven ZIP](https://github.com/Ischca/kue/releases/tag/v0.6.0) |
 | Flutter 3.32+, Dart 3.8+ | [kue_qa](packages/flutter/README.md), [optional recorder](packages/flutter-recorder/README.md) | [pub.dev core](https://pub.dev/packages/kue_qa/versions/0.6.0), [recorder](https://pub.dev/packages/kue_qa_recorder/versions/0.6.0) |
 | React Native 0.86.2 / React 19.2.3, New Architecture | [@kue-qa/react-native-bare](packages/react-native-bare/README.md), [optional recorder](packages/react-native-bare-recorder/README.md) | npm |
 
@@ -91,7 +91,7 @@ dependencies {
 
 Requirements are Android API 26 or later and Kotlin/JVM 17. Attach KUE to the
 foreground Activity once after `setContentView` or `setContent`; see
-[Documentation](https://kue.ischca.dev/en/docs#native-android) for Views/Compose
+[Documentation](https://kue.ischca.dev/en/docs/android) for Views/Compose
 examples, defaults, recording requirements, ZIP migration and removal.
 
 ## Cloud plans

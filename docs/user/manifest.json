@@ -1,21 +1,25 @@
 {
   "sdkVersion": "0.6.0",
   "reviewedAt": "2026-10-16",
-  "sections": [
-    "requirements",
-    "quickstart",
-    "manual",
-    "native-ios",
-    "native-android",
-    "flutter",
-    "react-native-bare",
-    "capture",
-    "context",
-    "triggers",
-    "outbox",
-    "management",
-    "data",
-    "updates",
-    "troubleshooting"
-  ]
+  "pages": [
+    { "id": "index", "sections": ["requirements", "management", "data", "troubleshooting"] },
+    { "id": "expo", "sections": ["quickstart", "manual", "capture", "context", "triggers", "outbox", "updates", "expo-troubleshooting"] },
+    { "id": "react-native", "sections": ["requirements", "install", "mount", "recording", "remove", "api"] },
+    { "id": "ios", "sections": ["install", "swiftui", "uikit", "capture", "api"] },
+    { "id": "android", "sections": ["install", "views", "compose", "upgrade", "api"] },
+    { "id": "flutter", "sections": ["requirements", "install", "native-build", "kuehost", "recording", "remove", "api"] }
+  ],
+  "legacyAnchors": {
+    "quickstart": "expo#quickstart",
+    "manual": "expo#manual",
+    "capture": "expo#capture",
+    "context": "expo#context",
+    "triggers": "expo#triggers",
+    "outbox": "expo#outbox",
+    "updates": "expo#updates",
+    "native-ios": "ios",
+    "native-android": "android",
+    "flutter": "flutter",
+    "react-native-bare": "react-native"
+  }
 }
